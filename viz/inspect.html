@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ChainGraph — Phase 1 Inspector</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: #0f1117; color: #e0e0e0; height: 100vh; overflow: hidden; }
+  #app { display: flex; height: 100vh; }
+  #graph-container { flex: 1; position: relative; }
+  #sidebar { width: 340px; background: #1a1d2e; border-left: 1px solid #2d3050;
+             display: flex; flex-direction: column; overflow: hidden; }
+  #header { padding: 14px 16px; border-bottom: 1px solid #2d3050; }
+  #header h1 { font-size: 15px; font-weight: 600; color: #a0a8d0; letter-spacing: 0.5px; }
+  #header p  { font-size: 11px; color: #555; margin-top: 3px; }
+  #detail    { flex: 1; overflow-y: auto; padding: 14px 16px; }
+  .detail-section { margin-bottom: 14px; }
+  .detail-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+                        color: #5a6080; margin-bottom: 6px; }
+  .kv { display: flex; gap: 8px; margin-bottom: 4px; font-size: 12px; }
+  .kv .k { color: #7080a8; min-width: 100px; }
+  .kv .v { color: #c8d0f0; word-break: break-word; }
+  #legend { padding: 12px 16px; border-top: 1px solid #2d3050; }
+  #legend h3 { font-size: 11px; text-transform: uppercase; color: #5a6080;
+                letter-spacing: 1px; margin-bottom: 8px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
+                font-size: 11px; color: #9090b0; }
+  .swatch { width: 28px; height: 3px; border-radius: 2px; }
+  svg { width: 100%; height: 100%; }
+  .node circle { cursor: pointer; stroke-width: 2px; }
+  .node text { pointer-events: none; font-size: 11px; fill: #ccd; font-weight: 500; }
+  .link { fill: none; stroke-opacity: 0.7; }
+  .link.selected { stroke-opacity: 1; }
+  .placeholder { color: #444; font-size: 12px; padding: 8px 0; }
+  .edge-pill { display: inline-block; padding: 2px 8px; border-radius: 10px;
+               font-size: 11px; font-weight: 600; margin-bottom: 8px; }
+  .evidence-box { background: #12151f; border-left: 3px solid #3040a0;
+                  padding: 8px 10px; border-radius: 4px; font-size: 11px;
+                  color: #a0b0d0; line-height: 1.5; margin-top: 6px; }
+  #week-filter { padding: 10px 16px; border-bottom: 1px solid #2d3050; font-size: 11px; }
+  #week-filter label { color: #7080a8; display: block; margin-bottom: 4px; }
+  #week-select { background: #12151f; color: #c0c8e8; border: 1px solid #2d3050;
+                 border-radius: 4px; padding: 4px 8px; font-size: 11px; width: 100%; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="graph-container">
+    <svg id="svg"></svg>
+  </div>
+  <div id="sidebar">
+    <div id="header">
+      <h1>ChainGraph Phase 1</h1>
+      <p>Click a node or edge to inspect</p>
+    </div>
+    <div id="week-filter">
+      <label>Filter by week</label>
+      <select id="week-select"><option value="all">All weeks</option></select>
+    </div>
+    <div id="detail">
+      <p class="placeholder">Hover over a node or edge for details.</p>
+    </div>
+    <div id="legend">
+      <h3>Relation types</h3>
+      <div class="legend-row"><div class="swatch" style="background:#5b8dee"></div>SUPPLIES</div>
+      <div class="legend-row"><div class="swatch" style="background:#f0a84a"></div>CONTRACTS_WITH</div>
+      <div class="legend-row"><div class="swatch" style="background:#e05a7a"></div>COMPETES_WITH</div>
+      <div class="legend-row"><div class="swatch" style="background:#6a6a8a"></div>CO_MENTION</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const EDGE_COLORS = {
+  SUPPLIES: "#5b8dee",
+  CONTRACTS_WITH: "#f0a84a",
+  COMPETES_WITH: "#e05a7a",
+  CO_MENTION: "#6a6a8a",
+};
+
+const NODE_COLOR = "#2a3060";
+const NODE_STROKE = "#4a5080";
+const NODE_SELECTED = "#5060c0";
+
+let allNodes = [], allEdges = [], activeWeek = "all";
+let simulation, svg, g, linkGroup, nodeGroup, markerDefs;
+let selectedEl = null;
+
+fetch("../data/output/graph.json")
+  .then(r => r.json())
+  .then(data => init(data))
+  .catch(err => {
+    document.getElementById("detail").innerHTML =
+      `<p style="color:#e05a7a;font-size:12px">Could not load graph.json:<br>${err}</p>
+       <p class="placeholder" style="margin-top:8px">Run:<br>
+       <code style="color:#a0b0d0">python scripts/run_phase1.py --input data/examples/Tech周报_讨论.docx --extractor seed</code>
+       <br>then open this file via a local server.</p>`;
+  });
+
+function init(data) {
+  allNodes = data.nodes;
+  allEdges = data.edges;
+
+  // Populate week filter
+  const weeks = [...new Set(data.edges.map(e => e.date))].sort().reverse();
+  const sel = document.getElementById("week-select");
+  weeks.forEach(w => {
+    const opt = document.createElement("option");
+    opt.value = w; opt.textContent = w;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change", () => { activeWeek = sel.value; render(); });
+
+  svg = d3.select("#svg");
+  const defs = svg.append("defs");
+
+  // Arrow markers per relation type
+  Object.entries(EDGE_COLORS).forEach(([type, color]) => {
+    defs.append("marker")
+      .attr("id", `arrow-${type}`)
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 22).attr("refY", 0)
+      .attr("markerWidth", 6).attr("markerHeight", 6)
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("fill", color);
+  });
+
+  g = svg.append("g");
+  linkGroup = g.append("g").attr("class", "links");
+  nodeGroup = g.append("g").attr("class", "nodes");
+
+  svg.call(d3.zoom().scaleExtent([0.2, 4])
+    .on("zoom", ev => g.attr("transform", ev.transform)));
+
+  render();
+}
+
+function render() {
+  const filtered_edges = activeWeek === "all"
+    ? allEdges
+    : allEdges.filter(e => e.date === activeWeek);
+
+  const node_ids_in_view = new Set(
+    filtered_edges.flatMap(e => [e.source, e.target])
+  );
+  const filtered_nodes = allNodes.filter(n => node_ids_in_view.has(n.id));
+
+  // Build lookup
+  const nodeMap = {};
+  filtered_nodes.forEach(n => { nodeMap[n.id] = { ...n, x: undefined, y: undefined }; });
+
+  // Build simulation nodes/links
+  const simNodes = filtered_nodes.map(n => ({ ...n }));
+  const simLinks = filtered_edges.map(e => ({
+    ...e,
+    _src: nodeMap[e.source],
+    _tgt: nodeMap[e.target],
+    source: e.source,
+    target: e.target,
+  }));
+
+  // Node radius ∝ mention_count
+  const mcMax = d3.max(simNodes, d => d.mention_count) || 1;
+  const rScale = d3.scaleSqrt().domain([0, mcMax]).range([6, 28]);
+
+  // Edge stroke ∝ weight
+  const wMax = d3.max(simLinks, d => d.weight) || 1;
+  const wScale = d3.scaleLinear().domain([0, wMax]).range([1, 6]);
+
+  // Clear old
+  linkGroup.selectAll("*").remove();
+  nodeGroup.selectAll("*").remove();
+
+  // Simulation
+  if (simulation) simulation.stop();
+  simulation = d3.forceSimulation(simNodes)
+    .force("link", d3.forceLink(simLinks).id(d => d.id).distance(d => 120 + rScale(d.target.mention_count || 1)))
+    .force("charge", d3.forceManyBody().strength(-300))
+    .force("center", d3.forceCenter(
+      document.getElementById("graph-container").clientWidth / 2,
+      document.getElementById("graph-container").clientHeight / 2
+    ))
+    .force("collision", d3.forceCollide().radius(d => rScale(d.mention_count) + 12));
+
+  // Links
+  const link = linkGroup.selectAll("line")
+    .data(simLinks)
+    .join("line")
+    .attr("class", "link")
+    .attr("stroke", d => EDGE_COLORS[d.relation_type] || "#6a6a8a")
+    .attr("stroke-width", d => wScale(d.weight))
+    .attr("marker-end", d => `url(#arrow-${d.relation_type})`)
+    .on("click", (event, d) => showEdgeDetail(d))
+    .style("cursor", "pointer");
+
+  // Nodes
+  const node = nodeGroup.selectAll("g.node")
+    .data(simNodes)
+    .join("g")
+    .attr("class", "node")
+    .call(d3.drag()
+      .on("start", (ev, d) => { if (!ev.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on("drag", (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+      .on("end", (ev, d) => { if (!ev.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+    )
+    .on("click", (event, d) => showNodeDetail(d, filtered_edges));
+
+  node.append("circle")
+    .attr("r", d => rScale(d.mention_count))
+    .attr("fill", NODE_COLOR)
+    .attr("stroke", NODE_STROKE);
+
+  node.append("text")
+    .attr("dx", d => rScale(d.mention_count) + 4)
+    .attr("dy", "0.35em")
+    .text(d => d.label);
+
+  simulation.on("tick", () => {
+    link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+    node.attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+}
+
+function showNodeDetail(d, edges) {
+  const outEdges = edges.filter(e => e.source === d.id);
+  const inEdges  = edges.filter(e => e.target === d.id);
+  let html = `
+    <div class="detail-section">
+      <h3>Node</h3>
+      <div class="kv"><span class="k">ID</span><span class="v">${d.id}</span></div>
+      <div class="kv"><span class="k">Mentions</span><span class="v">${d.mention_count}</span></div>
+    </div>`;
+
+  if (outEdges.length) {
+    html += `<div class="detail-section"><h3>Outgoing (${outEdges.length})</h3>`;
+    outEdges.forEach(e => {
+      const c = EDGE_COLORS[e.relation_type] || "#888";
+      html += `<div style="margin-bottom:8px">
+        <span class="edge-pill" style="background:${c}22;color:${c}">${e.relation_type}</span>
+        <div class="kv"><span class="k">→</span><span class="v">${e.target}</span></div>
+        ${e.what_flows ? `<div class="kv"><span class="k">flows</span><span class="v">${e.what_flows}</span></div>` : ""}
+        ${e.quantity != null ? `<div class="kv"><span class="k">qty</span><span class="v">${e.quantity} ${e.unit||""}</span></div>` : ""}
+        <div class="kv"><span class="k">date</span><span class="v">${e.date}</span></div>
+        ${e.evidence ? `<div class="evidence-box">${e.evidence}</div>` : ""}
+      </div>`;
+    });
+    html += "</div>";
+  }
+
+  if (inEdges.length) {
+    html += `<div class="detail-section"><h3>Incoming (${inEdges.length})</h3>`;
+    inEdges.forEach(e => {
+      const c = EDGE_COLORS[e.relation_type] || "#888";
+      html += `<div style="margin-bottom:8px">
+        <span class="edge-pill" style="background:${c}22;color:${c}">${e.relation_type}</span>
+        <div class="kv"><span class="k">←</span><span class="v">${e.source}</span></div>
+        ${e.what_flows ? `<div class="kv"><span class="k">flows</span><span class="v">${e.what_flows}</span></div>` : ""}
+        ${e.quantity != null ? `<div class="kv"><span class="k">qty</span><span class="v">${e.quantity} ${e.unit||""}</span></div>` : ""}
+        <div class="kv"><span class="k">date</span><span class="v">${e.date}</span></div>
+      </div>`;
+    });
+    html += "</div>";
+  }
+
+  document.getElementById("detail").innerHTML = html;
+}
+
+function showEdgeDetail(d) {
+  const c = EDGE_COLORS[d.relation_type] || "#888";
+  const chunks = (d.source_chunk_ids || []).join("<br>");
+  document.getElementById("detail").innerHTML = `
+    <div class="detail-section">
+      <h3>Edge</h3>
+      <span class="edge-pill" style="background:${c}22;color:${c}">${d.relation_type}</span>
+      <div class="kv"><span class="k">source</span><span class="v">${d.source}</span></div>
+      <div class="kv"><span class="k">target</span><span class="v">${d.target}</span></div>
+      ${d.what_flows ? `<div class="kv"><span class="k">what_flows</span><span class="v">${d.what_flows}</span></div>` : ""}
+      ${d.quantity != null ? `<div class="kv"><span class="k">quantity</span><span class="v">${d.quantity} ${d.unit||""}</span></div>` : ""}
+      <div class="kv"><span class="k">date</span><span class="v">${d.date}</span></div>
+      <div class="kv"><span class="k">weight</span><span class="v">${d.weight}</span></div>
+      <div class="kv"><span class="k">confidence</span><span class="v">${d.confidence}</span></div>
+      <div class="kv"><span class="k">mentions</span><span class="v">${d.mention_count}</span></div>
+    </div>
+    ${d.evidence ? `<div class="detail-section"><h3>Evidence</h3><div class="evidence-box">${d.evidence}</div></div>` : ""}
+    ${chunks ? `<div class="detail-section"><h3>Source chunks</h3><div class="kv"><span class="v" style="font-size:10px;color:#6070a0">${chunks}</span></div></div>` : ""}
+  `;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,419 @@
+{
+  "nodes": [
+    {
+      "id": "AMD",
+      "label": "AMD",
+      "mention_count": 2
+    },
+    {
+      "id": "Broadcom",
+      "label": "Broadcom",
+      "mention_count": 1
+    },
+    {
+      "id": "Foxconn",
+      "label": "Foxconn",
+      "mention_count": 1
+    },
+    {
+      "id": "Google",
+      "label": "Google",
+      "mention_count": 1
+    },
+    {
+      "id": "Innolight",
+      "label": "Innolight",
+      "mention_count": 3
+    },
+    {
+      "id": "Kioxia",
+      "label": "Kioxia",
+      "mention_count": 3
+    },
+    {
+      "id": "NVIDIA",
+      "label": "NVIDIA",
+      "mention_count": 16
+    },
+    {
+      "id": "OpenAI",
+      "label": "OpenAI",
+      "mention_count": 5
+    },
+    {
+      "id": "SK Hynix",
+      "label": "SK Hynix",
+      "mention_count": 7
+    },
+    {
+      "id": "Samsung",
+      "label": "Samsung",
+      "mention_count": 1
+    },
+    {
+      "id": "Sandisk",
+      "label": "Sandisk",
+      "mention_count": 3
+    },
+    {
+      "id": "Source Photonics",
+      "label": "Source Photonics",
+      "mention_count": 1
+    },
+    {
+      "id": "TSMC",
+      "label": "TSMC",
+      "mention_count": 6
+    }
+  ],
+  "edges": [
+    {
+      "source": "Innolight",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20251102",
+      "what_flows": "光模块",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.95,
+      "weight": 0.05,
+      "contract_scale_norm": null,
+      "evidence": "限制），存储继续涨 纳指 +2.3%，SOX +2.9%，中信电子 +8.1%；旭创/源杰 +32.2/38%，Sandisk/Kioxia +32.8/33.",
+      "source_chunk_ids": [
+        "20251102#市场表现：A股大涨，光模块持续加单创新高；海外存储继续涨"
+      ]
+    },
+    {
+      "source": "Source Photonics",
+      "target": "Google",
+      "relation_type": "SUPPLIES",
+      "date": "20251102",
+      "what_flows": "光模块",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.9,
+      "weight": 0.05,
+      "contract_scale_norm": null,
+      "evidence": "，存储继续涨 纳指 +2.3%，SOX +2.9%，中信电子 +8.1%；旭创/源杰 +32.2/38%，Sandisk/Kioxia +32.8/33.8%；",
+      "source_chunk_ids": [
+        "20251102#市场表现：A股大涨，光模块持续加单创新高；海外存储继续涨"
+      ]
+    },
+    {
+      "source": "SK Hynix",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20251102",
+      "what_flows": "HBM",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 2,
+      "confidence": 0.8,
+      "weight": 0.1,
+      "contract_scale_norm": null,
+      "evidence": "，MU/Hynix三星本身clear room就很紧，有限的资源都给了DRAM/HBM扩产，NAND短期扩不出来，目前有现成洁净室的就是SNDK/Kioxia，",
+      "source_chunk_ids": [
+        "20251102#LRCX 26FYQ1 Review LRCX",
+        "20251102#市场表现：A股大涨，光模块持续加单创新高；海外存储继续涨"
+      ]
+    },
+    {
+      "source": "Sandisk",
+      "target": "Kioxia",
+      "relation_type": "CO_MENTION",
+      "date": "20251102",
+      "what_flows": "NAND",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 2,
+      "confidence": 0.7,
+      "weight": 0.1,
+      "contract_scale_norm": null,
+      "evidence": "限的资源都给了DRAM/HBM扩产，NAND短期扩不出来，目前有现成洁净室的就是SNDK/Kioxia，两家产能占比30%，Concern就是目前还是净负债阶段",
+      "source_chunk_ids": [
+        "20251102#LRCX 26FYQ1 Review LRCX",
+        "20251102#市场表现：A股大涨，光模块持续加单创新高；海外存储继续涨"
+      ]
+    },
+    {
+      "source": "Innolight",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20251019",
+      "what_flows": "光模块",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.95,
+      "weight": 0.05,
+      "contract_scale_norm": null,
+      "evidence": "9.3%；A股回撤大，小米-11.7%；周末NV 1.6光模块加单，CW光源成为旭创产能debottleneck以及定价关键（锁大单+价格一步到位）；ASML",
+      "source_chunk_ids": [
+        "20251019#市场表现：A股继续卷，光模块/PCB跌；AVGO与OAI 10GW合作，澄清前期10B 订单（Anthropic买100亿TPU）；存储涨成C位"
+      ]
+    },
+    {
+      "source": "OpenAI",
+      "target": "Broadcom",
+      "relation_type": "CONTRACTS_WITH",
+      "date": "20251019",
+      "what_flows": "TPU/ASIC",
+      "quantity": 10.0,
+      "unit": "GW",
+      "unit_family": "power",
+      "mention_count": 1,
+      "confidence": 0.95,
+      "weight": 0.5,
+      "contract_scale_norm": 1.0,
+      "evidence": "1. 市场表现：A股继续卷，光模块/PCB跌；AVGO与OAI 10GW合作，澄清前期10B 订单（Anthropic买100",
+      "source_chunk_ids": [
+        "20251019#市场表现：A股继续卷，光模块/PCB跌；AVGO与OAI 10GW合作，澄清前期10B 订单（Anthropic买100亿TPU）；存储涨成C位"
+      ]
+    },
+    {
+      "source": "TSMC",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20251019",
+      "what_flows": "CoWoS/foundry",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 2,
+      "confidence": 0.85,
+      "weight": 0.1,
+      "contract_scale_norm": null,
+      "evidence": "，TSM是最谨慎的，股价还有往上空间；TSM业绩会前确认，明年下半年加15K每月CoWoS产能，明年大概能多10万片的出货，整体Shipment达到1100-1",
+      "source_chunk_ids": [
+        "20251019#市场表现：A股继续卷，光模块/PCB跌；AVGO与OAI 10GW合作，澄清前期10B 订单（Anthropic买100亿TPU）；存储涨成C位",
+        "20251019#TSM 25Q2 Review TSM"
+      ]
+    },
+    {
+      "source": "SK Hynix",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20251019",
+      "what_flows": "HBM",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.8,
+      "weight": 0.05,
+      "contract_scale_norm": null,
+      "evidence": "NTC先进制程的叙事证伪后交易较充分，后半个季度随着AI继续挤占存储，需求扩散，HBM带动的DRAM之外，NAND也看到明显的好转，同时伴随着TSLA与三星Fo",
+      "source_chunk_ids": [
+        "20251019#ASML 25Q2 Review ASML"
+      ]
+    },
+    {
+      "source": "Sandisk",
+      "target": "Kioxia",
+      "relation_type": "CO_MENTION",
+      "date": "20251019",
+      "what_flows": "NAND",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.7,
+      "weight": 0.05,
+      "contract_scale_norm": null,
+      "evidence": "4. NAND：SNDK 26CY 40 EPS Power，Kioxia for 1.5 SN",
+      "source_chunk_ids": [
+        "20251019#NAND：SNDK 26CY 40 EPS Power，Kioxia for 1.5 SNDK Business"
+      ]
+    },
+    {
+      "source": "OpenAI",
+      "target": "AMD",
+      "relation_type": "CONTRACTS_WITH",
+      "date": "20251012",
+      "what_flows": null,
+      "quantity": 6.0,
+      "unit": "GW",
+      "unit_family": "power",
+      "mention_count": 2,
+      "confidence": 0.95,
+      "weight": 0.1,
+      "contract_scale_norm": 0.0,
+      "evidence": "晚上突发中美关税战2.0 ，Tech首当其冲；周中老黄美东路演，NV周中新高 ；AMD与OAI 6GW合作  Focus：大A十一假期后没有迎来上涨，周五聪明钱",
+      "source_chunk_ids": [
+        "20251012#AMD与OAI 6GW合作",
+        "20251012#市场表现：周五晚上突发中美关税战2.0 ，Tech首当其冲；周中老黄美东路演，NV周中新高 ；AMD与OAI 6GW合作"
+      ]
+    },
+    {
+      "source": "TSMC",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20251012",
+      "what_flows": "CoWoS/foundry",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.85,
+      "weight": 0.05,
+      "contract_scale_norm": null,
+      "evidence": "SNDK/WDC/MU/Hynix本周回撤；SPE也回撤不少；确定性排序：NV/TSM/光之外，存储确定性也高，本周加紧研究，希望能够趁倒车机会上车；OEM和P",
+      "source_chunk_ids": [
+        "20251012#市场表现：周五晚上突发中美关税战2.0 ，Tech首当其冲；周中老黄美东路演，NV周中新高 ；AMD与OAI 6GW合作"
+      ]
+    },
+    {
+      "source": "Foxconn",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20251012",
+      "what_flows": "AI server/rack",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.8,
+      "weight": 0.05,
+      "contract_scale_norm": null,
+      "evidence": "5. 工业富联 25Q4业绩可能有压力 Q2 69亿净利； Q3正常来看苹果会新增25",
+      "source_chunk_ids": [
+        "20251012#工业富联 25Q4业绩可能有压力"
+      ]
+    },
+    {
+      "source": "OpenAI",
+      "target": "Samsung",
+      "relation_type": "CONTRACTS_WITH",
+      "date": "20251005",
+      "what_flows": "DRAM",
+      "quantity": 900000.0,
+      "unit": "WPM",
+      "unit_family": "throughput",
+      "mention_count": 1,
+      "confidence": 0.92,
+      "weight": 0.5,
+      "contract_scale_norm": 1.0,
+      "evidence": "30 OAI发布Sora2模型和Sora APP，视频模型引爆存储想象空间；Altman访问韩国，与三星/Hynix签订29CY 90万WPM DRAM订单 ；  Focus：大A十一假期休市；Sor",
+      "source_chunk_ids": [
+        "20251005#市场表现：0930 OAI发布Sora2模型和Sora APP，视频模型引爆存储想象空间；Altman访问韩国，与三星/Hynix签订29CY 90万WPM DRAM订单 ；"
+      ]
+    },
+    {
+      "source": "OpenAI",
+      "target": "SK Hynix",
+      "relation_type": "CONTRACTS_WITH",
+      "date": "20251005",
+      "what_flows": "DRAM",
+      "quantity": 900000.0,
+      "unit": "WPM",
+      "unit_family": "throughput",
+      "mention_count": 1,
+      "confidence": 0.92,
+      "weight": 0.5,
+      "contract_scale_norm": 1.0,
+      "evidence": "OAI发布Sora2模型和Sora APP，视频模型引爆存储想象空间；Altman访问韩国，与三星/Hynix签订29CY 90万WPM DRAM订单 ；  Focus：大A十一假期休市；Sora2模",
+      "source_chunk_ids": [
+        "20251005#市场表现：0930 OAI发布Sora2模型和Sora APP，视频模型引爆存储想象空间；Altman访问韩国，与三星/Hynix签订29CY 90万WPM DRAM订单 ；"
+      ]
+    },
+    {
+      "source": "SK Hynix",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20251005",
+      "what_flows": "HBM",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 2,
+      "confidence": 0.8,
+      "weight": 0.1,
+      "contract_scale_norm": null,
+      "evidence": "Hynix签订DRAM大单，到29CY锁定90万Wafer/Month产能；3）HBM3E 26年降价还有争议，没有30%这么多，估计在high teens，对",
+      "source_chunk_ids": [
+        "20251005#Memory继续加火",
+        "20251005#市场表现：0930 OAI发布Sora2模型和Sora APP，视频模型引爆存储想象空间；Altman访问韩国，与三星/Hynix签订29CY 90万WPM DRAM订单 ；"
+      ]
+    },
+    {
+      "source": "TSMC",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20251005",
+      "what_flows": "CoWoS/foundry",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 2,
+      "confidence": 0.85,
+      "weight": 0.1,
+      "contract_scale_norm": null,
+      "evidence": "22.9/19.4/17.5%；LRCX领涨SPE，也ATH；TSM 26CY CoWoS加产能迫近：之前定的设备提前拉货，产能提前完成建设；同时CoWoS设备",
+      "source_chunk_ids": [
+        "20251005#TSM先进制程和CoWoS加产能  TSM",
+        "20251005#市场表现：0930 OAI发布Sora2模型和Sora APP，视频模型引爆存储想象空间；Altman访问韩国，与三星/Hynix签订29CY 90万WPM DRAM订单 ；"
+      ]
+    },
+    {
+      "source": "SK Hynix",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20250914",
+      "what_flows": "HBM",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.8,
+      "weight": 0.05,
+      "contract_scale_norm": null,
+      "evidence": "6FY WFE会下滑； 中短期，Leading edge logic（GAA）、HBM和Advancing Package会是增长动力； iCAPS短期有库存消",
+      "source_chunk_ids": [
+        "20250914#GS Communacopia策略会：LRCX/AMAT/ASML、TER、AVGO、NVDA、ARM、TSMC、TI；"
+      ]
+    },
+    {
+      "source": "TSMC",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20250914",
+      "what_flows": "CoWoS/foundry",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.85,
+      "weight": 0.05,
+      "contract_scale_norm": null,
+      "evidence": "MCM，Broadcom’s Tomahawk 6 to migrate to CoWoS-S，AMD’s Venice server CPU to upgra",
+      "source_chunk_ids": [
+        "20250914#GS Communacopia策略会：LRCX/AMAT/ASML、TER、AVGO、NVDA、ARM、TSMC、TI；"
+      ]
+    },
+    {
+      "source": "Innolight",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20250914",
+      "what_flows": "光模块",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.95,
+      "weight": 0.05,
+      "contract_scale_norm": null,
+      "evidence": "光走得更稳健，GLW&Fiji&Lite； Long：光集中到核心票（CX升级，旭创/新易盛光模块，正交胜宏，CPO 天孚，其他光器件源杰、长飞）、工业富联、海",
+      "source_chunk_ids": [
+        "20250914#股票业绩及操作"
+      ]
+    }
+  ]
+}
