@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "relation_types": {
+    "SUPPLIES": {
+      "directed": true,
+      "description": "source supplies goods/services to target",
+      "what_flows_required": false
+    },
+    "CONTRACTS_WITH": {
+      "directed": true,
+      "description": "source (buyer) contracts with target (supplier) for capacity/product",
+      "what_flows_required": false
+    },
+    "COMPETES_WITH": {
+      "directed": false,
+      "description": "symmetric competitive relationship"
+    },
+    "CO_MENTION": {
+      "directed": false,
+      "description": "co-mentioned without typed relationship; use sparingly"
+    }
+  },
+  "unit_families": {
+    "power": ["GW", "MW", "TW"],
+    "throughput": ["WPM", "万WPM", "KWPM"],
+    "money": ["亿USD", "亿RMB", "M USD", "B USD", "亿"],
+    "volume": ["M", "K", "万", "万片"]
+  }
+}
