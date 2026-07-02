@@ -24,15 +24,38 @@ Output ONLY a JSON object with this exact schema:
   ]
 }
 
-Rules:
-- SUPPLIES: source supplies goods/services to target (source→target)
-- CONTRACTS_WITH: source (buyer) contracts with target (supplier) for capacity
+## Relation direction rules (READ CAREFULLY):
+
+### SUPPLIES — source=SUPPLIER, target=CUSTOMER
+The company that MAKES or DELIVERS the product is the source.
+The company that BUYS or RECEIVES is the target.
+KEY PATTERN: "X加单Y" or "X向Y下单" means X is BUYING FROM Y → source=Y (supplier), target=X (buyer)
+  ✓ "NV加单旭创1.6T光模块" → source="旭创", target="NVIDIA"  (旭创 is the supplier, NV is buying)
+  ✓ "Google向源杰加单光模块" → source="源杰", target="Google"
+  ✓ "富士康/富联为NV组装AI服务器" → source="富士康", target="NVIDIA"
+  ✓ "SK Hynix向NV供应HBM" → source="SK Hynix", target="NVIDIA"
+  ✗ WRONG: source="NVIDIA", target="旭창"  ← 加单 means NV is the BUYER, not the supplier
+
+### CONTRACTS_WITH — source=BUYER (AI/cloud company), target=SUPPLIER (chip/hardware maker)
+Use CONTRACTS_WITH (not SUPPLIES) when an AI company or cloud provider orders custom chips or
+long-term capacity from a semiconductor company.
+RULE: Buyer companies (OpenAI, Google, Meta, Amazon, Microsoft, Apple, ByteDance, 字节) are
+      ALWAYS source. Chip/hardware suppliers (AMD, Broadcom, TSMC, Samsung, SK Hynix, Foxconn)
+      are ALWAYS target. Word order in text does NOT determine source/target.
+  ✓ "AVGO与OAI 10GW合作" → source="OpenAI", target="Broadcom", relation_type="CONTRACTS_WITH", quantity=10, unit="GW"
+  ✓ "AMD与OAI 6GW合作"   → source="OpenAI", target="AMD",      relation_type="CONTRACTS_WITH", quantity=6,  unit="GW"
+  ✗ WRONG: source="AMD",         target="OpenAI", relation_type="SUPPLIES"      ← must be CONTRACTS_WITH, buyer=source
+  ✗ WRONG: source="OpenAI",      target="AMD",    relation_type="SUPPLIES"      ← OpenAI does not supply chips; use CONTRACTS_WITH
+  ✗ WRONG: source="Broadcom",    target="OpenAI", relation_type="SUPPLIES"      ← buyer must be source in CONTRACTS_WITH
+
+### Other rules:
 - COMPETES_WITH: symmetric competitor relationship
 - CO_MENTION: use ONLY if no typed relation exists; use sparingly
-- CUSTOMER_OF: extract as-is; it will be automatically folded to SUPPLIES
+- CUSTOMER_OF: do not use; not in schema
 - Include only explicitly stated or clearly implied relationships
 - For Chinese company names, use them as they appear in text
 - evidence must be ≤15 words from the source text
+- Units: normalize 万 prefix (×10000). Example: 90万WPM → quantity=900000, unit="WPM"
 """
 
 USER_TEMPLATE = """Extract supply-chain relationships from this tech industry report chunk.

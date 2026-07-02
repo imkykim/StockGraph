@@ -12,6 +12,9 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
+
 from pipeline.ingest.docx_adapter import load_chunks
 from pipeline.standardize.entity_resolver import EntityResolver
 from pipeline.graph.edge_builder import build_edges_from_chunks
@@ -26,8 +29,23 @@ def get_extractor(name: str):
     elif name == "llm":
         from pipeline.extract.llm_extractor import LLMExtractor
         return LLMExtractor()
+    elif name == "llm+seed":
+        from pipeline.extract.llm_extractor import LLMExtractor
+        from pipeline.extract.seed_extractor import SeedExtractor
+        from pipeline.extract.base import ExtractionResult
+        llm = LLMExtractor()
+        seed = SeedExtractor()
+        class HybridExtractor:
+            def extract(self, chunks):
+                r_llm = llm.extract(chunks)
+                r_seed = seed.extract(chunks)
+                return ExtractionResult(
+                    companies=r_llm.companies + r_seed.companies,
+                    relations=r_llm.relations + r_seed.relations,
+                )
+        return HybridExtractor()
     else:
-        print(f"Unknown extractor '{name}'. Use 'seed' or 'llm'.", file=sys.stderr)
+        print(f"Unknown extractor '{name}'. Use 'seed', 'llm', or 'llm+seed'.", file=sys.stderr)
         sys.exit(1)
 
 
@@ -35,13 +53,20 @@ def main():
     parser = argparse.ArgumentParser(description="ChainGraph Phase 1 pipeline")
     parser.add_argument("--input", required=True, help="Path to docx file")
     parser.add_argument("--weeks", type=int, default=5, help="Number of weeks to process")
-    parser.add_argument("--extractor", default="seed", choices=["seed", "llm"])
+    parser.add_argument("--extractor", default="seed", choices=["seed", "llm", "llm+seed"])
     parser.add_argument("--output", default="data/output/graph.json")
+    parser.add_argument("--chunks", default=None,
+                        help="Comma-separated substrings to filter chunk IDs (e.g. '20251019#市场,20251012#AMD')")
     args = parser.parse_args()
 
     print(f"[1/5] Loading chunks from {args.input} (top {args.weeks} weeks)...")
     chunks = load_chunks(args.input, weeks=args.weeks)
     print(f"      {len(chunks)} chunks, {len(set(c.week for c in chunks))} weeks")
+
+    if args.chunks:
+        filters = [f.strip() for f in args.chunks.split(",")]
+        chunks = [c for c in chunks if any(f in c.chunk_id for f in filters)]
+        print(f"      → filtered to {len(chunks)} chunks: {[c.chunk_id for c in chunks]}")
 
     chunk_week_map = {c.chunk_id: c.week for c in chunks}
 

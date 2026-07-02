@@ -1,0 +1,167 @@
+{
+  "nodes": [
+    {
+      "id": "AMD",
+      "label": "AMD",
+      "mention_count": 2
+    },
+    {
+      "id": "Anthropic",
+      "label": "Anthropic",
+      "mention_count": 1
+    },
+    {
+      "id": "Broadcom",
+      "label": "Broadcom",
+      "mention_count": 3
+    },
+    {
+      "id": "Innolight",
+      "label": "Innolight",
+      "mention_count": 1
+    },
+    {
+      "id": "NVIDIA",
+      "label": "NVIDIA",
+      "mention_count": 2
+    },
+    {
+      "id": "OpenAI",
+      "label": "OpenAI",
+      "mention_count": 3
+    },
+    {
+      "id": "TSMC",
+      "label": "TSMC",
+      "mention_count": 2
+    }
+  ],
+  "edges": [
+    {
+      "source": "OpenAI",
+      "target": "Broadcom",
+      "relation_type": "CONTRACTS_WITH",
+      "date": "20251019",
+      "what_flows": "10GW",
+      "quantity": 10,
+      "unit": "GW",
+      "unit_family": "power",
+      "mention_count": 1,
+      "confidence": 0.95,
+      "weight": 1.0,
+      "contract_scale_norm": 1.0,
+      "evidence": "AVGO与OAI 10GW合作",
+      "source_chunk_ids": [
+        "20251019#市场表现：A股继续卷，光模块/PCB跌；AVGO与OAI 10GW合作，澄清前期10B 订单（Anthropic买100亿TPU）；存储涨成C位"
+      ]
+    },
+    {
+      "source": "Anthropic",
+      "target": "Broadcom",
+      "relation_type": "CONTRACTS_WITH",
+      "date": "20251019",
+      "what_flows": "TPU",
+      "quantity": 1000000,
+      "unit": "亿",
+      "unit_family": "other",
+      "mention_count": 1,
+      "confidence": 0.85,
+      "weight": 1.0,
+      "contract_scale_norm": 1.0,
+      "evidence": "Anthropic买100亿TPU",
+      "source_chunk_ids": [
+        "20251019#市场表现：A股继续卷，光模块/PCB跌；AVGO与OAI 10GW合作，澄清前期10B 订单（Anthropic买100亿TPU）；存储涨成C位"
+      ]
+    },
+    {
+      "source": "NVIDIA",
+      "target": "Innolight",
+      "relation_type": "SUPPLIES",
+      "date": "20251019",
+      "what_flows": "1.6T光模块",
+      "quantity": null,
+      "unit": null,
+      "unit_family": null,
+      "mention_count": 1,
+      "confidence": 0.9,
+      "weight": 0.1,
+      "contract_scale_norm": null,
+      "evidence": "周末NV 1.6光模块加单",
+      "source_chunk_ids": [
+        "20251019#市场表现：A股继续卷，光模块/PCB跌；AVGO与OAI 10GW合作，澄清前期10B 订单（Anthropic买100亿TPU）；存储涨成C位"
+      ]
+    },
+    {
+      "source": "TSMC",
+      "target": "NVIDIA",
+      "relation_type": "SUPPLIES",
+      "date": "20251019",
+      "what_flows": "CoWoS",
+      "quantity": 650,
+      "unit": "K",
+      "unit_family": "volume",
+      "mention_count": 1,
+      "confidence": 0.8,
+      "weight": 1.0,
+      "contract_scale_norm": 1.0,
+      "evidence": "加单后预计明年NV能够按到650-680K CoWoS",
+      "source_chunk_ids": [
+        "20251019#市场表现：A股继续卷，光模块/PCB跌；AVGO与OAI 10GW合作，澄清前期10B 订单（Anthropic买100亿TPU）；存储涨成C位"
+      ]
+    },
+    {
+      "source": "TSMC",
+      "target": "Broadcom",
+      "relation_type": "SUPPLIES",
+      "date": "20251019",
+      "what_flows": "CoWoS",
+      "quantity": 180,
+      "unit": "K",
+      "unit_family": "volume",
+      "mention_count": 1,
+      "confidence": 0.75,
+      "weight": 0.1,
+      "contract_scale_norm": 0.0,
+      "evidence": "AVGO加到180K+，争取做到200K",
+      "source_chunk_ids": [
+        "20251019#市场表现：A股继续卷，光模块/PCB跌；AVGO与OAI 10GW合作，澄清前期10B 订单（Anthropic买100亿TPU）；存储涨成C位"
+      ]
+    },
+    {
+      "source": "OpenAI",
+      "target": "AMD",
+      "relation_type": "CONTRACTS_WITH",
+      "date": "20251012",
+      "what_flows": "6GW of AMD chips",
+      "quantity": 6,
+      "unit": "GW",
+      "unit_family": "power",
+      "mention_count": 1,
+      "confidence": 0.95,
+      "weight": 0.7349,
+      "contract_scale_norm": 0.7349,
+      "evidence": "AMD与OAI 6GW合作",
+      "source_chunk_ids": [
+        "20251012#AMD与OAI 6GW合作"
+      ]
+    },
+    {
+      "source": "AMD",
+      "target": "OpenAI",
+      "relation_type": "SUPPLIES",
+      "date": "20251012",
+      "what_flows": "MI455 chips",
+      "quantity": 1,
+      "unit": "GW",
+      "unit_family": "power",
+      "mention_count": 1,
+      "confidence": 0.85,
+      "weight": 0.1,
+      "contract_scale_norm": 0.0,
+      "evidence": "26H2 MI455开始第1个GW部署",
+      "source_chunk_ids": [
+        "20251012#AMD与OAI 6GW合作"
+      ]
+    }
+  ]
+}

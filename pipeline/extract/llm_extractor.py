@@ -32,15 +32,18 @@ def _call_anthropic(messages: list[dict], api_key: str) -> str:
     return response.content[0].text
 
 
-def _call_openai(messages: list[dict], api_key: str) -> str:
+def _call_openai(messages: list[dict], api_key: str, base_url: str | None = None) -> str:
     from openai import OpenAI
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key, base_url=base_url)
     full_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
+    model = "Qwen3-32B"
+    extra = {"enable_thinking": False} if "Qwen3" in model else {}
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model,
         messages=full_messages,
         max_tokens=2048,
         response_format={"type": "json_object"},
+        extra_body=extra,
     )
     return response.choices[0].message.content
 
@@ -55,7 +58,11 @@ def _extract_chunk(chunk: Chunk, caller) -> tuple[list[RawCompany], list[RawRela
         print(f"  [warn] chunk {chunk.chunk_id}: {e}", file=sys.stderr)
         return [], []
 
-    companies = [RawCompany(surface=c["surface"]) for c in data.get("companies", [])]
+    raw_companies = data.get("companies", [])
+    companies = [
+        RawCompany(surface=c if isinstance(c, str) else c["surface"])
+        for c in raw_companies
+    ]
     relations = []
     for r in data.get("relations", []):
         try:
@@ -77,10 +84,15 @@ def _extract_chunk(chunk: Chunk, caller) -> tuple[list[RawCompany], list[RawRela
 
 class LLMExtractor:
     def __init__(self):
+        api_key = os.environ.get("API_KEY")
+        base_url = os.environ.get("BASE_URL")
         anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
         openai_key = os.environ.get("OPENAI_API_KEY")
 
-        if anthropic_key:
+        if api_key and base_url:
+            print(f"Using custom API: {base_url}", file=sys.stderr)
+            self._caller = lambda msgs: _call_openai(msgs, api_key, base_url=base_url)
+        elif anthropic_key:
             print("Using Anthropic API", file=sys.stderr)
             self._caller = lambda msgs: _call_anthropic(msgs, anthropic_key)
         elif openai_key:
@@ -89,7 +101,7 @@ class LLMExtractor:
         else:
             print(
                 "ERROR: No API key found.\n"
-                "Set ANTHROPIC_API_KEY or OPENAI_API_KEY to use the LLM extractor.\n"
+                "Set API_KEY + BASE_URL (or ANTHROPIC_API_KEY / OPENAI_API_KEY).\n"
                 "For demo/testing, use --extractor seed instead.",
                 file=sys.stderr,
             )

@@ -44,7 +44,7 @@ _CANONICAL_TO_ALIASES: dict[str, list[str]] = {
         "Eoptolink",
     ],
     "Foxconn": [
-        "Foxconn", "工业富联", "FII", "鸿海", "富联",
+        "Foxconn", "工业富联", "FII", "鸿海", "富联", "富士康",
         "foxconn", "fii",
         "Foxconn Industrial Internet",
     ],
