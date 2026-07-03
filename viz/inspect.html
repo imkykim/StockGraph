@@ -94,9 +94,29 @@
 
 <script src="graph-data.js"></script>
 <script src="lib/d3.v7.min.js"></script>
-<script src="lib/three.min.js"></script>
-<script src="lib/three-spritetext.min.js"></script>
-<script src="lib/3d-force-graph.min.js"></script>
+
+<!-- 3D stack as ES modules sharing ONE three instance (import map).
+     This is what prevents the dual-three conflict that blanked the 3D view. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://esm.sh/three@0.157.0",
+    "three/": "https://esm.sh/three@0.157.0/",
+    "three-spritetext": "https://esm.sh/three-spritetext@1.8.2?external=three",
+    "3d-force-graph": "https://esm.sh/3d-force-graph@1.73.4?external=three"
+  }
+}
+</script>
+<script type="module">
+  import ForceGraph3D from "3d-force-graph";
+  import SpriteText from "three-spritetext";
+  // expose to the classic app script below; 3D is only used on toggle click,
+  // by which time these modules have finished loading.
+  window.ForceGraph3D = ForceGraph3D;
+  window.SpriteText = SpriteText;
+  window.__force3dReady = true;
+  window.dispatchEvent(new Event("force3d-ready"));
+</script>
 <script>
 const EDGE_COLORS = {
   SUPPLIES: "#5b8dee",
@@ -306,9 +326,15 @@ function show3dError(msg) {
 }
 
 function render3D() {
-  if (typeof ForceGraph3D === "undefined") {
-    show3dError("3D library (lib/3d-force-graph.min.js) failed to load.<br>" +
-                "Make sure the viz/lib/ folder sits next to this HTML file.");
+  if (typeof ForceGraph3D === "undefined" || typeof SpriteText === "undefined") {
+    // modules still loading — show a note and retry once they signal ready
+    document.getElementById("graph-3d").innerHTML =
+      `<div style="position:absolute;inset:0;display:flex;align-items:center;
+        justify-content:center;color:#5a6080;font-size:12px">Loading 3D…</div>`;
+    window.addEventListener("force3d-ready", () => {
+      document.getElementById("graph-3d").innerHTML = "";
+      if (mode === "3d") render3D();
+    }, { once: true });
     return;
   }
 
