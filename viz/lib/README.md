@@ -1,31 +1,27 @@
 # viz/lib
 
 Vendored front-end libraries for `viz/inspect.html` so it runs offline / on a
-static host with no import map or CDN.
+static host with no CDN.
 
 - `d3.v7.min.js` — 2D force graph (UMD global `d3`).
-- `graph3d.bundle.js` — 3D stack: `3d-force-graph` + `three-spritetext` +
-  a **single** `three@0.185.1`, bundled with esbuild. Exposes global
-  `Graph3D = { ForceGraph3D, SpriteText }`.
+- `three.min.js` — three@0.157.0 (UMD global `THREE`), loaded **only** so
+  `three-spritetext` can build the 3D node labels.
+- `three-spritetext.min.js` — three-spritetext@1.8.2 (global `SpriteText`).
+- `3d-force-graph.min.js` — 3d-force-graph@1.73.4 (global `ForceGraph3D`).
+  Its UMD bundles its own three (r168) for the actual WebGL rendering.
 
-## Why a bundle?
+## ⚠️ Do not "upgrade" the 3D three version blindly
 
-`3d-force-graph` ships its own `three`, while `three-spritetext` needs a
-matching `three`. Loading them separately produced **two three instances**,
-which threw while rendering label sprites and blanked the whole 3D view.
-esbuild bundles them against one deduped `three`, eliminating the conflict.
+An earlier attempt bundled these with esbuild against a newer three (r185).
+That build threw `THREE.WebGLRenderer: Error creating WebGL context` on some
+browsers/GPUs where the r168 UMD renders fine. Keep this pinned combo unless
+you can verify a newer three still creates a context on those machines.
 
-## Regenerate `graph3d.bundle.js`
+## Refresh the vendored files (same versions)
 
 ```bash
-cd /tmp && rm -rf sg-build && mkdir sg-build && cd sg-build
-npm init -y
-# three version must match 3d-force-graph's dependency (currently 0.185.1)
-npm i 3d-force-graph@1.73.4 three-spritetext@1.8.2 three@0.185.1 esbuild
-printf "import ForceGraph3D from '3d-force-graph';\nimport SpriteText from 'three-spritetext';\nexport { ForceGraph3D, SpriteText };\n" > entry.js
-./node_modules/.bin/esbuild entry.js --bundle --format=iife \
-  --global-name=Graph3D --minify \
-  --outfile=<repo>/viz/lib/graph3d.bundle.js
-# sanity: exactly one three revision
-grep -oE 'REVISION[=:]"?[0-9]+' <repo>/viz/lib/graph3d.bundle.js | sort | uniq -c
+cd viz/lib
+curl -sSL -o three.min.js            https://unpkg.com/three@0.157.0/build/three.min.js
+curl -sSL -o three-spritetext.min.js https://unpkg.com/three-spritetext@1.8.2/dist/three-spritetext.min.js
+curl -sSL -o 3d-force-graph.min.js   https://unpkg.com/3d-force-graph@1.73.4/dist/3d-force-graph.min.js
 ```
