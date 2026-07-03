@@ -1,5 +1,5 @@
 {
-  "rewrites": [
-    { "source": "/", "destination": "/viz/inspect.html" }
+  "redirects": [
+    { "source": "/", "destination": "/viz/inspect.html", "permanent": false }
   ]
 }
