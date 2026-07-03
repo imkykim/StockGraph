@@ -3,362 +3,434 @@
     {
       "id": "AI",
       "label": "AI",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "SECTOR"
     },
     {
       "id": "AMD",
       "label": "AMD",
-      "mention_count": 7
+      "mention_count": 7,
+      "type": "COMPANY"
     },
     {
       "id": "ASML",
       "label": "ASML",
-      "mention_count": 13
+      "mention_count": 13,
+      "type": "COMPANY"
     },
     {
       "id": "Anthropic",
       "label": "Anthropic",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "Apple",
       "label": "Apple",
-      "mention_count": 9
+      "mention_count": 9,
+      "type": "COMPANY"
     },
     {
       "id": "Apply material",
       "label": "Apply material",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "Arista Networks",
       "label": "Arista Networks",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "Broadcom",
       "label": "Broadcom",
-      "mention_count": 11
+      "mention_count": 11,
+      "type": "COMPANY"
     },
     {
       "id": "CSP",
       "label": "CSP",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "SECTOR"
     },
     {
       "id": "DRAM",
       "label": "DRAM",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "SECTOR"
     },
     {
       "id": "Fiji",
       "label": "Fiji",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "Foxconn",
       "label": "Foxconn",
-      "mention_count": 7
+      "mention_count": 7,
+      "type": "COMPANY"
     },
     {
       "id": "GLW",
       "label": "GLW",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "Google",
       "label": "Google",
-      "mention_count": 7
+      "mention_count": 7,
+      "type": "COMPANY"
     },
     {
       "id": "HBM",
       "label": "HBM",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "SECTOR"
     },
     {
       "id": "INTC",
       "label": "INTC",
-      "mention_count": 11
+      "mention_count": 11,
+      "type": "COMPANY"
     },
     {
       "id": "Innolight",
       "label": "Innolight",
-      "mention_count": 8
+      "mention_count": 8,
+      "type": "COMPANY"
     },
     {
       "id": "KLA",
       "label": "KLA",
-      "mention_count": 2
+      "mention_count": 2,
+      "type": "COMPANY"
     },
     {
       "id": "Kioxia",
       "label": "Kioxia",
-      "mention_count": 2
+      "mention_count": 2,
+      "type": "COMPANY"
     },
     {
       "id": "LGI",
       "label": "LGI",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "LITE",
       "label": "LITE",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "Lam Research",
       "label": "Lam Research",
-      "mention_count": 5
+      "mention_count": 5,
+      "type": "COMPANY"
     },
     {
       "id": "Lasertec",
       "label": "Lasertec",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "MediaTek",
       "label": "MediaTek",
-      "mention_count": 2
+      "mention_count": 2,
+      "type": "COMPANY"
     },
     {
       "id": "Mellonox",
       "label": "Mellonox",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "Meta",
       "label": "Meta",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "Micron",
       "label": "Micron",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "Microsoft",
       "label": "Microsoft",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "NVIDIA",
       "label": "NVIDIA",
-      "mention_count": 54
+      "mention_count": 54,
+      "type": "COMPANY"
     },
     {
       "id": "OpenAI",
       "label": "OpenAI",
-      "mention_count": 11
+      "mention_count": 11,
+      "type": "COMPANY"
     },
     {
       "id": "SAMCO",
       "label": "SAMCO",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "SK",
       "label": "SK",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "SK Hynix",
       "label": "SK Hynix",
-      "mention_count": 14
+      "mention_count": 14,
+      "type": "COMPANY"
     },
     {
       "id": "Sam",
       "label": "Sam",
-      "mention_count": 2
+      "mention_count": 2,
+      "type": "COMPANY"
     },
     {
       "id": "Samsung",
       "label": "Samsung",
-      "mention_count": 7
+      "mention_count": 7,
+      "type": "COMPANY"
     },
     {
       "id": "Sandisk",
       "label": "Sandisk",
-      "mention_count": 5
+      "mention_count": 5,
+      "type": "COMPANY"
     },
     {
       "id": "Silver Lake",
       "label": "Silver Lake",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "Source Photonics",
       "label": "Source Photonics",
-      "mention_count": 5
+      "mention_count": 5,
+      "type": "COMPANY"
     },
     {
       "id": "TSLA",
       "label": "TSLA",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "TSMC",
       "label": "TSMC",
-      "mention_count": 30
+      "mention_count": 30,
+      "type": "COMPANY"
     },
     {
       "id": "Texas Instruments",
       "label": "Texas Instruments",
-      "mention_count": 2
+      "mention_count": 2,
+      "type": "COMPANY"
     },
     {
       "id": "X2",
       "label": "X2",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "三星Foundry",
       "label": "三星Foundry",
-      "mention_count": 2
+      "mention_count": 2,
+      "type": "COMPANY"
     },
     {
       "id": "中国区",
       "label": "中国区",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "REGION"
     },
     {
       "id": "光",
       "label": "光",
-      "mention_count": 3
+      "mention_count": 3,
+      "type": "SECTOR"
     },
     {
       "id": "创想三维",
       "label": "创想三维",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "创鑫",
       "label": "创鑫",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "大族",
       "label": "大族",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "大疆",
       "label": "大疆",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "天孚",
       "label": "天孚",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "字节",
       "label": "字节",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "存储",
       "label": "存储",
-      "mention_count": 4
+      "mention_count": 4,
+      "type": "SECTOR"
     },
     {
       "id": "宁德时代",
       "label": "宁德时代",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "康宁",
       "label": "康宁",
-      "mention_count": 2
+      "mention_count": 2,
+      "type": "COMPANY"
     },
     {
       "id": "康普",
       "label": "康普",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "弘塑",
       "label": "弘塑",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "影石",
       "label": "影石",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "拓竹",
       "label": "拓竹",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "新凯来",
       "label": "新凯来",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "新易盛",
       "label": "新易盛",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "昂纳",
       "label": "昂纳",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "杰普特",
       "label": "杰普特",
-      "mention_count": 12
+      "mention_count": 12,
+      "type": "COMPANY"
     },
     {
       "id": "比亚迪",
       "label": "比亚迪",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "滨松",
       "label": "滨松",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "立讯精密",
       "label": "立讯精密",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "美国政府",
       "label": "美国政府",
-      "mention_count": 2
+      "mention_count": 2,
+      "type": "INSTITUTION"
     },
     {
       "id": "胜宏",
       "label": "胜宏",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "豪威",
       "label": "豪威",
-      "mention_count": 2
+      "mention_count": 2,
+      "type": "COMPANY"
     },
     {
       "id": "软银",
       "label": "软银",
-      "mention_count": 3
+      "mention_count": 3,
+      "type": "COMPANY"
     },
     {
       "id": "锐科",
       "label": "锐科",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     },
     {
       "id": "长光辰芯",
       "label": "长光辰芯",
-      "mention_count": 4
+      "mention_count": 4,
+      "type": "COMPANY"
     },
     {
       "id": "长飞",
       "label": "长飞",
-      "mention_count": 1
+      "mention_count": 1,
+      "type": "COMPANY"
     }
   ],
   "edges": [

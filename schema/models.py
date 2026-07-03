@@ -10,6 +10,7 @@ class Company:
     aliases: list[str] = field(default_factory=list)
     mention_count: int = 0
     ticker: Optional[str] = None
+    node_type: str = "COMPANY"  # COMPANY | SECTOR | REGION | INSTITUTION
 
 
 @dataclass

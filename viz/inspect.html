@@ -1,458 +1,880 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>ChainGraph — Phase 1 Inspector</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-         background: #0f1117; color: #e0e0e0; height: 100vh; overflow: hidden; }
-  #app { display: flex; height: 100vh; }
-  #graph-container { flex: 1; position: relative; }
-  #svg-container, #graph-3d { position: absolute; inset: 0; }
-  #graph-3d { display: none; }
-  #sidebar { width: 340px; background: #1a1d2e; border-left: 1px solid #2d3050;
-             display: flex; flex-direction: column; overflow: hidden; }
-  #header { padding: 14px 16px; border-bottom: 1px solid #2d3050; }
-  #header .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  #header h1 { font-size: 15px; font-weight: 600; color: #a0a8d0; letter-spacing: 0.5px; }
-  #header p  { font-size: 11px; color: #555; margin-top: 3px; }
-  #mode-toggle { display: flex; background: #12151f; border: 1px solid #2d3050;
-                 border-radius: 6px; overflow: hidden; }
-  #mode-toggle button { background: transparent; border: none; color: #7080a8;
-                 font-size: 11px; font-weight: 600; padding: 5px 12px; cursor: pointer;
-                 letter-spacing: 0.5px; transition: background .15s, color .15s; }
-  #mode-toggle button.active { background: #3040a0; color: #fff; }
-  #detail    { flex: 1; overflow-y: auto; padding: 14px 16px; }
-  .detail-section { margin-bottom: 14px; }
-  .detail-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
-                        color: #5a6080; margin-bottom: 6px; }
-  .kv { display: flex; gap: 8px; margin-bottom: 4px; font-size: 12px; }
-  .kv .k { color: #7080a8; min-width: 100px; }
-  .kv .v { color: #c8d0f0; word-break: break-word; }
-  #legend { padding: 12px 16px; border-top: 1px solid #2d3050; }
-  #legend h3 { font-size: 11px; text-transform: uppercase; color: #5a6080;
-                letter-spacing: 1px; margin-bottom: 8px; }
-  .legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
-                font-size: 11px; color: #9090b0; }
-  .swatch { width: 28px; height: 3px; border-radius: 2px; }
-  svg { width: 100%; height: 100%; }
-  .node circle { cursor: pointer; stroke-width: 2px; }
-  .node text { pointer-events: none; fill: #f2f5ff; font-weight: 700;
-               text-anchor: middle; paint-order: stroke;
-               stroke: #0b0d14; stroke-width: 4px; stroke-linejoin: round; }
-  .link { fill: none; stroke-opacity: 0.7; }
-  .link.selected { stroke-opacity: 1; }
-  .placeholder { color: #444; font-size: 12px; padding: 8px 0; }
-  .edge-pill { display: inline-block; padding: 2px 8px; border-radius: 10px;
-               font-size: 11px; font-weight: 600; margin-bottom: 8px; }
-  .evidence-box { background: #12151f; border-left: 3px solid #3040a0;
-                  padding: 8px 10px; border-radius: 4px; font-size: 11px;
-                  color: #a0b0d0; line-height: 1.5; margin-top: 6px; }
-  #week-filter { padding: 10px 16px; border-bottom: 1px solid #2d3050; font-size: 11px; }
-  #week-filter label { color: #7080a8; display: block; margin-bottom: 4px; }
-  #week-select { background: #12151f; color: #c0c8e8; border: 1px solid #2d3050;
-                 border-radius: 4px; padding: 4px 8px; font-size: 11px; width: 100%; }
-  #hint-3d { position: absolute; bottom: 10px; left: 12px; font-size: 10px;
-             color: #556; pointer-events: none; display: none; }
-</style>
-</head>
-<body>
-<div id="app">
-  <div id="graph-container">
-    <div id="svg-container"><svg id="svg"></svg></div>
-    <div id="graph-3d"></div>
-    <div id="hint-3d">drag = rotate · scroll = zoom · right-drag = pan</div>
-  </div>
-  <div id="sidebar">
-    <div id="header">
-      <div class="row">
-        <h1>ChainGraph Phase 1</h1>
-        <div id="mode-toggle">
-          <button id="btn-2d" class="active">2D</button>
-          <button id="btn-3d">3D</button>
+  <head>
+    <meta charset="UTF-8" />
+    <title>ChainGraph — Phase 1 Inspector</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0f1117;
+        color: #e0e0e0;
+        height: 100vh;
+        overflow: hidden;
+      }
+      #app {
+        display: flex;
+        height: 100vh;
+      }
+      #graph-container {
+        flex: 1;
+        position: relative;
+      }
+      #svg-container,
+      #graph-3d {
+        position: absolute;
+        inset: 0;
+      }
+      #graph-3d {
+        display: none;
+      }
+      #sidebar {
+        width: 340px;
+        background: #1a1d2e;
+        border-left: 1px solid #2d3050;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      #header {
+        padding: 14px 16px;
+        border-bottom: 1px solid #2d3050;
+      }
+      #header .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      #header h1 {
+        font-size: 15px;
+        font-weight: 600;
+        color: #a0a8d0;
+        letter-spacing: 0.5px;
+      }
+      #header p {
+        font-size: 11px;
+        color: #555;
+        margin-top: 3px;
+      }
+      #mode-toggle {
+        display: flex;
+        background: #12151f;
+        border: 1px solid #2d3050;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      #mode-toggle button {
+        background: transparent;
+        border: none;
+        color: #7080a8;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 5px 12px;
+        cursor: pointer;
+        letter-spacing: 0.5px;
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+      #mode-toggle button.active {
+        background: #3040a0;
+        color: #fff;
+      }
+      #detail {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px 16px;
+      }
+      .detail-section {
+        margin-bottom: 14px;
+      }
+      .detail-section h3 {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #5a6080;
+        margin-bottom: 6px;
+      }
+      .kv {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 4px;
+        font-size: 12px;
+      }
+      .kv .k {
+        color: #7080a8;
+        min-width: 100px;
+      }
+      .kv .v {
+        color: #c8d0f0;
+        word-break: break-word;
+      }
+      #legend {
+        padding: 12px 16px;
+        border-top: 1px solid #2d3050;
+      }
+      #legend h3 {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #5a6080;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+      }
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+        font-size: 11px;
+        color: #9090b0;
+      }
+      .type-row {
+        cursor: pointer;
+        user-select: none;
+      }
+      .type-row input {
+        margin: 0;
+        accent-color: #5b8dee;
+      }
+      .type-row .swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+      .type-row .rel-swatch {
+        width: 16px;
+        height: 3px;
+        border-radius: 2px;
+      }
+      .swatch {
+        width: 28px;
+        height: 3px;
+        border-radius: 2px;
+      }
+      svg {
+        width: 100%;
+        height: 100%;
+      }
+      .node circle {
+        cursor: pointer;
+        stroke-width: 2px;
+      }
+      .node text {
+        pointer-events: none;
+        fill: #f2f5ff;
+        font-weight: 700;
+        text-anchor: middle;
+        paint-order: stroke;
+        stroke: #0b0d14;
+        stroke-width: 4px;
+        stroke-linejoin: round;
+      }
+      .link {
+        fill: none;
+        stroke-opacity: 0.7;
+      }
+      .link.selected {
+        stroke-opacity: 1;
+      }
+      .placeholder {
+        color: #444;
+        font-size: 12px;
+        padding: 8px 0;
+      }
+      .edge-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .evidence-box {
+        background: #12151f;
+        border-left: 3px solid #3040a0;
+        padding: 8px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #a0b0d0;
+        line-height: 1.5;
+        margin-top: 6px;
+      }
+      #week-filter {
+        padding: 10px 16px;
+        border-bottom: 1px solid #2d3050;
+        font-size: 11px;
+      }
+      #week-filter label {
+        color: #7080a8;
+        display: block;
+        margin-bottom: 4px;
+      }
+      #week-select {
+        background: #12151f;
+        color: #c0c8e8;
+        border: 1px solid #2d3050;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 11px;
+        width: 100%;
+      }
+      #hint-3d {
+        position: absolute;
+        bottom: 10px;
+        left: 12px;
+        font-size: 10px;
+        color: #556;
+        pointer-events: none;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="graph-container">
+        <div id="svg-container"><svg id="svg"></svg></div>
+        <div id="graph-3d"></div>
+        <div id="hint-3d">drag = rotate · scroll = zoom · right-drag = pan</div>
+      </div>
+      <div id="sidebar">
+        <div id="header">
+          <div class="row">
+            <h1>ChainGraph Phase 1</h1>
+            <div id="mode-toggle">
+              <button id="btn-2d" class="active">2D</button>
+              <button id="btn-3d">3D</button>
+            </div>
+          </div>
+          <p>Click a node or edge to inspect</p>
+        </div>
+        <div id="week-filter">
+          <label>Filter by week</label>
+          <select id="week-select">
+            <option value="all">All weeks</option>
+          </select>
+        </div>
+        <div id="detail">
+          <p class="placeholder">Hover over a node or edge for details.</p>
+        </div>
+        <div id="legend">
+          <h3>Node types</h3>
+          <div id="node-type-filter"></div>
+          <h3 style="margin-top: 12px">Relation types</h3>
+          <div id="rel-type-filter"></div>
         </div>
       </div>
-      <p>Click a node or edge to inspect</p>
     </div>
-    <div id="week-filter">
-      <label>Filter by week</label>
-      <select id="week-select"><option value="all">All weeks</option></select>
-    </div>
-    <div id="detail">
-      <p class="placeholder">Hover over a node or edge for details.</p>
-    </div>
-    <div id="legend">
-      <h3>Relation types</h3>
-      <div class="legend-row"><div class="swatch" style="background:#5b8dee"></div>SUPPLIES</div>
-      <div class="legend-row"><div class="swatch" style="background:#f0a84a"></div>CONTRACTS_WITH</div>
-      <div class="legend-row"><div class="swatch" style="background:#e05a7a"></div>COMPETES_WITH</div>
-      <div class="legend-row"><div class="swatch" style="background:#6a6a8a"></div>CO_MENTION</div>
-    </div>
-  </div>
-</div>
 
-<script src="graph-data.js"></script>
-<script src="lib/d3.v7.min.js"></script>
+    <script src="graph-data.js"></script>
+    <script src="lib/d3.v7.min.js"></script>
 
-<!-- 3D stack (vendored UMD) — the exact combo confirmed working on the user's
+    <!-- 3D stack (vendored UMD) — the exact combo confirmed working on the user's
      browser. 3d-force-graph@1.73.4 bundles three r168 for rendering;
      three@0.157.0 is loaded globally only so three-spritetext can build label
      sprites. NOTE: an esbuild bundle pulling newer three (r185) threw
      "THREE.WebGLRenderer: Error creating WebGL context" on some GPUs/browsers
      where this r168 build renders fine — so keep this pinned combo. Exposes
      globals ForceGraph3D and SpriteText. -->
-<script src="lib/three.min.js"></script>
-<script src="lib/three-spritetext.min.js"></script>
-<script src="lib/3d-force-graph.min.js"></script>
-<script>
-const EDGE_COLORS = {
-  SUPPLIES: "#5b8dee",
-  CONTRACTS_WITH: "#f0a84a",
-  COMPETES_WITH: "#e05a7a",
-  CO_MENTION: "#6a6a8a",
-};
+    <script src="lib/three.min.js"></script>
+    <script src="lib/three-spritetext.min.js"></script>
+    <script src="lib/3d-force-graph.min.js"></script>
+    <script>
+      const EDGE_COLORS = {
+        SUPPLIES: "#5b8dee",
+        CONTRACTS_WITH: "#f0a84a",
+        COMPETES_WITH: "#e05a7a",
+        CO_MENTION: "#6a6a8a",
+      };
 
-const NODE_COLOR = "#2a3060";
-const NODE_STROKE = "#4a5080";
-const NODE_COLOR_3D = "#8fa4ff";
+      const NODE_COLOR = "#2a3060";
+      const NODE_STROKE = "#4a5080";
+      const NODE_COLOR_3D = "#8fa4ff";
 
-let allNodes = [], allEdges = [], activeWeek = "all", mode = "2d";
-let simulation, svg, g, linkGroup, nodeGroup;
-let graph3d = null, built3dOnce = false;
+      // Node fill by type. COMPANY is the default deep blue; the others are the
+      // non-company nodes the extractor over-produces (sectors/regions/gov).
+      const NODE_TYPE_COLORS = {
+        COMPANY: "#2a3060",
+        SECTOR: "#8a5a2a",
+        REGION: "#2a6a5a",
+        INSTITUTION: "#6a2a5a",
+      };
+      const NODE_TYPE_COLORS_3D = {
+        COMPANY: "#8fa4ff",
+        SECTOR: "#f0a84a",
+        REGION: "#4ad0b0",
+        INSTITUTION: "#e07ac0",
+      };
+      const NODE_TYPE_LABELS = {
+        COMPANY: "Company",
+        SECTOR: "Sector / product",
+        REGION: "Region",
+        INSTITUTION: "Institution",
+      };
+      const nodeType = (n) => n.type || "COMPANY";
+      const nodeColor2D = (n) =>
+        NODE_TYPE_COLORS[nodeType(n)] || NODE_COLOR;
+      const nodeColor3D = (n) =>
+        NODE_TYPE_COLORS_3D[nodeType(n)] || NODE_COLOR_3D;
 
-// Prefer live file when served (auto-fresh); fall back to embedded data so the
-// page also works when opened directly from disk (file://), no server needed.
-fetch("../data/output/graph.json")
-  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(data => init(data))
-  .catch(() => {
-    if (typeof EMBEDDED_GRAPH !== "undefined") { init(EMBEDDED_GRAPH); return; }
-    document.getElementById("detail").innerHTML =
-      `<p style="color:#e05a7a;font-size:12px">Could not load graph data.</p>
+      let allNodes = [],
+        allEdges = [],
+        activeWeek = "all",
+        activeTypes = new Set(Object.keys(NODE_TYPE_COLORS)),
+        activeRelTypes = new Set(Object.keys(EDGE_COLORS)),
+        typeById = new Map(),
+        mode = "2d";
+      let simulation, svg, g, linkGroup, nodeGroup;
+      let graph3d = null,
+        built3dOnce = false;
+
+      // Prefer live file when served (auto-fresh); fall back to embedded data so the
+      // page also works when opened directly from disk (file://), no server needed.
+      fetch("../data/output/graph.json")
+        .then((r) => {
+          if (!r.ok) throw new Error(r.status);
+          return r.json();
+        })
+        .then((data) => init(data))
+        .catch(() => {
+          if (typeof EMBEDDED_GRAPH !== "undefined") {
+            init(EMBEDDED_GRAPH);
+            return;
+          }
+          document.getElementById("detail").innerHTML =
+            `<p style="color:#e05a7a;font-size:12px">Could not load graph data.</p>
        <p class="placeholder" style="margin-top:8px">Regenerate the embedded copy:<br>
        <code style="color:#a0b0d0">python3 -c "import json;d=json.load(open('data/output/graph.json'));open('viz/graph-data.js','w').write('window.EMBEDDED_GRAPH='+json.dumps(d,ensure_ascii=False)+';')"</code></p>`;
-  });
+        });
 
-function init(data) {
-  allNodes = data.nodes;
-  allEdges = data.edges;
+      function init(data) {
+        allNodes = data.nodes;
+        allEdges = data.edges;
+        typeById = new Map(allNodes.map((n) => [n.id, nodeType(n)]));
 
-  // Populate week filter
-  const weeks = [...new Set(data.edges.map(e => e.date))].sort().reverse();
-  const sel = document.getElementById("week-select");
-  weeks.forEach(w => {
-    const opt = document.createElement("option");
-    opt.value = w; opt.textContent = w;
-    sel.appendChild(opt);
-  });
-  sel.addEventListener("change", () => { activeWeek = sel.value; renderActive(); });
+        buildTypeFilter();
+        buildRelTypeFilter();
 
-  // 2D scaffold
-  svg = d3.select("#svg");
-  const defs = svg.append("defs");
-  Object.entries(EDGE_COLORS).forEach(([type, color]) => {
-    defs.append("marker")
-      .attr("id", `arrow-${type}`)
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 22).attr("refY", 0)
-      .attr("markerWidth", 6).attr("markerHeight", 6)
-      .attr("orient", "auto")
-      .append("path")
-      .attr("d", "M0,-5L10,0L0,5")
-      .attr("fill", color);
-  });
-  g = svg.append("g");
-  linkGroup = g.append("g").attr("class", "links");
-  nodeGroup = g.append("g").attr("class", "nodes");
-  svg.call(d3.zoom().scaleExtent([0.2, 4])
-    .on("zoom", ev => g.attr("transform", ev.transform)));
+        // Populate week filter
+        const weeks = [...new Set(data.edges.map((e) => e.date))]
+          .sort()
+          .reverse();
+        const sel = document.getElementById("week-select");
+        weeks.forEach((w) => {
+          const opt = document.createElement("option");
+          opt.value = w;
+          opt.textContent = w;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener("change", () => {
+          activeWeek = sel.value;
+          renderActive();
+        });
 
-  // Mode toggle
-  document.getElementById("btn-2d").addEventListener("click", () => setMode("2d"));
-  document.getElementById("btn-3d").addEventListener("click", () => setMode("3d"));
+        // 2D scaffold
+        svg = d3.select("#svg");
+        const defs = svg.append("defs");
+        Object.entries(EDGE_COLORS).forEach(([type, color]) => {
+          defs
+            .append("marker")
+            .attr("id", `arrow-${type}`)
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", 22)
+            .attr("refY", 0)
+            .attr("markerWidth", 6)
+            .attr("markerHeight", 6)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M0,-5L10,0L0,5")
+            .attr("fill", color);
+        });
+        g = svg.append("g");
+        linkGroup = g.append("g").attr("class", "links");
+        nodeGroup = g.append("g").attr("class", "nodes");
+        svg.call(
+          d3
+            .zoom()
+            .scaleExtent([0.2, 4])
+            .on("zoom", (ev) => g.attr("transform", ev.transform)),
+        );
 
-  render2D();
-}
+        // Mode toggle
+        document
+          .getElementById("btn-2d")
+          .addEventListener("click", () => setMode("2d"));
+        document
+          .getElementById("btn-3d")
+          .addEventListener("click", () => setMode("3d"));
 
-// ---- shared data prep -------------------------------------------------------
-function filteredData() {
-  const edges = activeWeek === "all"
-    ? allEdges
-    : allEdges.filter(e => e.date === activeWeek);
-  const ids = new Set(edges.flatMap(e => [e.source, e.target]));
-  const nodes = allNodes.filter(n => ids.has(n.id));
-  return { nodes, edges };
-}
+        render2D();
+      }
 
-function renderActive() {
-  if (mode === "2d") render2D();
-  else render3D();
-}
+      // ---- shared data prep -------------------------------------------------------
+      const typeActive = (id) => activeTypes.has(typeById.get(id) || "COMPANY");
+      const linkId = (endpoint) =>
+        endpoint && endpoint.id != null ? endpoint.id : endpoint;
 
-function setMode(m) {
-  if (m === mode) return;
-  mode = m;
-  document.getElementById("btn-2d").classList.toggle("active", m === "2d");
-  document.getElementById("btn-3d").classList.toggle("active", m === "3d");
-  document.getElementById("svg-container").style.display = m === "2d" ? "block" : "none";
-  document.getElementById("graph-3d").style.display = m === "3d" ? "block" : "none";
-  document.getElementById("hint-3d").style.display = m === "3d" ? "block" : "none";
-  if (m === "2d" && simulation) simulation.alphaTarget(0).restart();
-  renderActive();
-}
+      // An edge shows only if its relation type is on AND both endpoints' node
+      // types are on.
+      const edgeVisible = (e) =>
+        activeRelTypes.has(e.relation_type) &&
+        typeActive(linkId(e.source)) &&
+        typeActive(linkId(e.target));
 
-// ---- 2D (D3 SVG) ------------------------------------------------------------
-function render2D() {
-  const { nodes: filtered_nodes, edges: filtered_edges } = filteredData();
+      // Layout is built from the WEEK filter only (all node types included), so
+      // toggling a type never reshuffles positions — it just flips visibility.
+      function weekData() {
+        const edges =
+          activeWeek === "all"
+            ? allEdges
+            : allEdges.filter((e) => e.date === activeWeek);
+        const ids = new Set(edges.flatMap((e) => [e.source, e.target]));
+        const nodes = allNodes.filter((n) => ids.has(n.id));
+        return { nodes, edges };
+      }
 
-  const nodeMap = {};
-  filtered_nodes.forEach(n => { nodeMap[n.id] = { ...n }; });
+      // ---- node-type legend + filter ---------------------------------------------
+      function buildTypeFilter() {
+        const counts = {};
+        allNodes.forEach((n) => {
+          const t = nodeType(n);
+          counts[t] = (counts[t] || 0) + 1;
+        });
+        const box = document.getElementById("node-type-filter");
+        box.innerHTML = "";
+        Object.keys(NODE_TYPE_COLORS).forEach((t) => {
+          if (!counts[t]) return;
+          const row = document.createElement("label");
+          row.className = "legend-row type-row";
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.checked = true;
+          cb.addEventListener("change", () => {
+            cb.checked ? activeTypes.add(t) : activeTypes.delete(t);
+            // Visibility-only update — do NOT rebuild the layout.
+            if (mode === "2d") applyTypeVisibility2D();
+            else applyTypeVisibility3D();
+          });
+          const sw = document.createElement("div");
+          sw.className = "swatch";
+          sw.style.background = NODE_TYPE_COLORS_3D[t];
+          const txt = document.createElement("span");
+          txt.textContent = `${NODE_TYPE_LABELS[t]} (${counts[t]})`;
+          row.append(cb, sw, txt);
+          box.appendChild(row);
+        });
+      }
 
-  const simNodes = filtered_nodes.map(n => ({ ...n }));
-  const simLinks = filtered_edges.map(e => ({
-    ...e, source: e.source, target: e.target,
-  }));
+      function buildRelTypeFilter() {
+        const counts = {};
+        allEdges.forEach((e) => {
+          counts[e.relation_type] = (counts[e.relation_type] || 0) + 1;
+        });
+        const box = document.getElementById("rel-type-filter");
+        box.innerHTML = "";
+        Object.keys(EDGE_COLORS).forEach((t) => {
+          if (!counts[t]) return;
+          const row = document.createElement("label");
+          row.className = "legend-row type-row";
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.checked = true;
+          cb.addEventListener("change", () => {
+            cb.checked ? activeRelTypes.add(t) : activeRelTypes.delete(t);
+            // Visibility-only update — do NOT rebuild the layout.
+            if (mode === "2d") applyTypeVisibility2D();
+            else applyTypeVisibility3D();
+          });
+          const sw = document.createElement("div");
+          sw.className = "swatch rel-swatch";
+          sw.style.background = EDGE_COLORS[t];
+          const txt = document.createElement("span");
+          txt.textContent = `${t} (${counts[t]})`;
+          row.append(cb, sw, txt);
+          box.appendChild(row);
+        });
+      }
 
-  const mcMax = d3.max(simNodes, d => d.mention_count) || 1;
-  const rScale = d3.scaleSqrt().domain([0, mcMax]).range([16, 62]);
-  const wMax = d3.max(simLinks, d => d.weight) || 1;
-  const wScale = d3.scaleLinear().domain([0, wMax]).range([1.5, 8]);
+      function renderActive() {
+        if (mode === "2d") render2D();
+        else render3D();
+      }
 
-  linkGroup.selectAll("*").remove();
-  nodeGroup.selectAll("*").remove();
+      function setMode(m) {
+        if (m === mode) return;
+        mode = m;
+        document
+          .getElementById("btn-2d")
+          .classList.toggle("active", m === "2d");
+        document
+          .getElementById("btn-3d")
+          .classList.toggle("active", m === "3d");
+        document.getElementById("svg-container").style.display =
+          m === "2d" ? "block" : "none";
+        document.getElementById("graph-3d").style.display =
+          m === "3d" ? "block" : "none";
+        document.getElementById("hint-3d").style.display =
+          m === "3d" ? "block" : "none";
+        if (m === "2d" && simulation) simulation.alphaTarget(0).restart();
+        renderActive();
+      }
 
-  const cx = document.getElementById("graph-container").clientWidth / 2;
-  const cy = document.getElementById("graph-container").clientHeight / 2;
+      // ---- 2D (D3 SVG) ------------------------------------------------------------
+      function render2D() {
+        const { nodes: filtered_nodes, edges: filtered_edges } = weekData();
 
-  if (simulation) simulation.stop();
-  simulation = d3.forceSimulation(simNodes)
-    .force("link", d3.forceLink(simLinks).id(d => d.id).distance(d => 60 + rScale(d.source.mention_count || 1) + rScale(d.target.mention_count || 1)))
-    // strong repulsion keeps the big cluster nicely spread; bigger nodes push harder
-    .force("charge", d3.forceManyBody().strength(d => -700 - rScale(d.mention_count) * 14))
-    .force("center", d3.forceCenter(cx, cy))
-    // per-node spring toward center: stops detached small groups drifting off,
-    // without compressing the main cluster
-    .force("x", d3.forceX(cx).strength(0.08))
-    .force("y", d3.forceY(cy).strength(0.08))
-    // padding scales with node size so large nodes get real breathing room
-    .force("collision", d3.forceCollide().radius(d => rScale(d.mention_count) * 1.25 + 14).strength(1));
+        const nodeMap = {};
+        filtered_nodes.forEach((n) => {
+          nodeMap[n.id] = { ...n };
+        });
 
-  const link = linkGroup.selectAll("line")
-    .data(simLinks)
-    .join("line")
-    .attr("class", "link")
-    .attr("stroke", d => EDGE_COLORS[d.relation_type] || "#6a6a8a")
-    .attr("stroke-width", d => wScale(d.weight))
-    .attr("marker-end", d => `url(#arrow-${d.relation_type})`)
-    .on("click", (event, d) => showEdgeDetail(d))
-    .style("cursor", "pointer");
+        const simNodes = filtered_nodes.map((n) => ({ ...n }));
+        const simLinks = filtered_edges.map((e) => ({
+          ...e,
+          source: e.source,
+          target: e.target,
+        }));
 
-  const node = nodeGroup.selectAll("g.node")
-    .data(simNodes)
-    .join("g")
-    .attr("class", "node")
-    .call(d3.drag()
-      .on("start", (ev, d) => { if (!ev.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-      .on("drag", (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
-      .on("end", (ev, d) => { if (!ev.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
-    )
-    .on("click", (event, d) => showNodeDetail(d, filtered_edges));
+        const mcMax = d3.max(simNodes, (d) => d.mention_count) || 1;
+        const rScale = d3.scaleSqrt().domain([0, mcMax]).range([16, 62]);
+        const wMax = d3.max(simLinks, (d) => d.weight) || 1;
+        const wScale = d3.scaleLinear().domain([0, wMax]).range([1.5, 8]);
 
-  node.append("circle")
-    .attr("r", d => rScale(d.mention_count))
-    .attr("fill", NODE_COLOR)
-    .attr("stroke", NODE_STROKE);
+        linkGroup.selectAll("*").remove();
+        nodeGroup.selectAll("*").remove();
 
-  node.append("text")
-    .attr("dy", "0.35em")
-    .style("font-size", d => Math.max(11, Math.min(rScale(d.mention_count) * 0.55, 22)) + "px")
-    .text(d => d.label);
+        const cx = document.getElementById("graph-container").clientWidth / 2;
+        const cy = document.getElementById("graph-container").clientHeight / 2;
 
-  simulation.on("tick", () => {
-    link
-      .attr("x1", d => d.source.x)
-      .attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x)
-      .attr("y2", d => d.target.y);
-    node.attr("transform", d => `translate(${d.x},${d.y})`);
-  });
-}
+        if (simulation) simulation.stop();
+        simulation = d3
+          .forceSimulation(simNodes)
+          .force(
+            "link",
+            d3
+              .forceLink(simLinks)
+              .id((d) => d.id)
+              .distance(
+                (d) =>
+                  60 +
+                  rScale(d.source.mention_count || 1) +
+                  rScale(d.target.mention_count || 1),
+              ),
+          )
+          // strong repulsion keeps the big cluster nicely spread; bigger nodes push harder
+          .force(
+            "charge",
+            d3
+              .forceManyBody()
+              .strength((d) => -700 - rScale(d.mention_count) * 14),
+          )
+          .force("center", d3.forceCenter(cx, cy))
+          // per-node spring toward center: stops detached small groups drifting off,
+          // without compressing the main cluster
+          .force("x", d3.forceX(cx).strength(0.08))
+          .force("y", d3.forceY(cy).strength(0.08))
+          // padding scales with node size so large nodes get real breathing room
+          .force(
+            "collision",
+            d3
+              .forceCollide()
+              .radius((d) => rScale(d.mention_count) * 1.25 + 14)
+              .strength(1),
+          );
 
-// ---- 3D (3d-force-graph / WebGL) --------------------------------------------
-function node3dRadius(n, mcMax) {
-  // matches nodeRelSize(4) * cbrt(nodeVal); keep in sync with nodeVal below
-  return 4 * Math.cbrt(nodeVal3d(n, mcMax));
-}
-function nodeVal3d(n, mcMax) {
-  return (n.mention_count / mcMax) * 22 + 1.5;
-}
+        const link = linkGroup
+          .selectAll("line")
+          .data(simLinks)
+          .join("line")
+          .attr("class", "link")
+          .attr("stroke", (d) => EDGE_COLORS[d.relation_type] || "#6a6a8a")
+          .attr("stroke-width", (d) => wScale(d.weight))
+          .attr("marker-end", (d) => `url(#arrow-${d.relation_type})`)
+          .on("click", (event, d) => showEdgeDetail(d))
+          .style("cursor", "pointer");
 
-function makeLabel(n, mcMax) {
-  try {
-    if (typeof SpriteText !== "function") return null;
-    const sprite = new SpriteText(n.label);
-    sprite.color = "#f2f5ff";
-    sprite.textHeight = 5 + (n.mention_count / mcMax) * 6;   // bigger for hubs
-    sprite.fontWeight = "700";
-    sprite.backgroundColor = "rgba(11,13,20,0.72)";
-    sprite.padding = 2;
-    sprite.borderRadius = 3;
-    sprite.position.set(0, node3dRadius(n, mcMax) + sprite.textHeight, 0);
-    return sprite;
-  } catch (e) {
-    console.warn("label sprite failed", e);
-    return null;
-  }
-}
+        const node = nodeGroup
+          .selectAll("g.node")
+          .data(simNodes)
+          .join("g")
+          .attr("class", "node")
+          .call(
+            d3
+              .drag()
+              .on("start", (ev, d) => {
+                if (!ev.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+              })
+              .on("drag", (ev, d) => {
+                d.fx = ev.x;
+                d.fy = ev.y;
+              })
+              .on("end", (ev, d) => {
+                if (!ev.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+              }),
+          )
+          .on("click", (event, d) => showNodeDetail(d, filtered_edges));
 
-function show3dError(msg) {
-  document.getElementById("graph-3d").innerHTML =
-    `<div style="position:absolute;inset:0;display:flex;align-items:center;
+        node
+          .append("circle")
+          .attr("r", (d) => rScale(d.mention_count))
+          .attr("fill", (d) => nodeColor2D(d))
+          .attr("stroke", NODE_STROKE);
+
+        node
+          .append("text")
+          .attr("dy", "0.35em")
+          .style(
+            "font-size",
+            (d) =>
+              Math.max(11, Math.min(rScale(d.mention_count) * 0.55, 22)) + "px",
+          )
+          .text((d) => d.label);
+
+        simulation.on("tick", () => {
+          link
+            .attr("x1", (d) => d.source.x)
+            .attr("y1", (d) => d.source.y)
+            .attr("x2", (d) => d.target.x)
+            .attr("y2", (d) => d.target.y);
+          node.attr("transform", (d) => `translate(${d.x},${d.y})`);
+        });
+
+        applyTypeVisibility2D();
+      }
+
+      // Flip node/edge visibility for the current type filter, without touching
+      // the running simulation — positions stay put.
+      function applyTypeVisibility2D() {
+        nodeGroup
+          .selectAll("g.node")
+          .style("display", (d) =>
+            activeTypes.has(nodeType(d)) ? null : "none",
+          );
+        linkGroup
+          .selectAll("line")
+          .style("display", (d) => (edgeVisible(d) ? null : "none"));
+      }
+
+      // Re-applying the visibility accessors refreshes hidden/shown nodes without
+      // re-feeding graphData, so the 3D layout keeps its exact positions.
+      function applyTypeVisibility3D() {
+        if (!graph3d) return;
+        graph3d
+          .nodeVisibility((n) => activeTypes.has(nodeType(n)))
+          .linkVisibility((l) => edgeVisible(l));
+      }
+
+      // ---- 3D (3d-force-graph / WebGL) --------------------------------------------
+      function node3dRadius(n, mcMax) {
+        // matches nodeRelSize(4) * cbrt(nodeVal); keep in sync with nodeVal below
+        return 4 * Math.cbrt(nodeVal3d(n, mcMax));
+      }
+      function nodeVal3d(n, mcMax) {
+        return (n.mention_count / mcMax) * 22 + 1.5;
+      }
+
+      function makeLabel(n, mcMax) {
+        try {
+          if (typeof SpriteText !== "function") return null;
+          const sprite = new SpriteText(n.label);
+          sprite.color = "#f2f5ff";
+          sprite.textHeight = 5 + (n.mention_count / mcMax) * 6; // bigger for hubs
+          sprite.fontWeight = "700";
+          sprite.backgroundColor = "rgba(11,13,20,0.72)";
+          sprite.padding = 2;
+          sprite.borderRadius = 3;
+          sprite.position.set(0, node3dRadius(n, mcMax) + sprite.textHeight, 0);
+          return sprite;
+        } catch (e) {
+          console.warn("label sprite failed", e);
+          return null;
+        }
+      }
+
+      function show3dError(msg) {
+        document.getElementById("graph-3d").innerHTML =
+          `<div style="position:absolute;inset:0;display:flex;align-items:center;
       justify-content:center;padding:32px;text-align:center;color:#e05a7a;
       font-size:13px;line-height:1.6">${msg}</div>`;
-}
+      }
 
-function render3D() {
-  if (typeof ForceGraph3D === "undefined" || typeof SpriteText === "undefined") {
-    show3dError("3D libraries (viz/lib/*.js) failed to load.<br>" +
-                "Make sure the viz/lib/ folder sits next to this HTML file.");
-    return;
-  }
+      function render3D() {
+        if (
+          typeof ForceGraph3D === "undefined" ||
+          typeof SpriteText === "undefined"
+        ) {
+          show3dError(
+            "3D libraries (viz/lib/*.js) failed to load.<br>" +
+              "Make sure the viz/lib/ folder sits next to this HTML file.",
+          );
+          return;
+        }
 
-  const { nodes: filtered_nodes, edges: filtered_edges } = filteredData();
+        const { nodes: filtered_nodes, edges: filtered_edges } = weekData();
 
-  const mcMax = Math.max(1, ...filtered_nodes.map(n => n.mention_count));
-  const wMax = Math.max(0.0001, ...filtered_edges.map(e => e.weight));
+        const mcMax = Math.max(
+          1,
+          ...filtered_nodes.map((n) => n.mention_count),
+        );
+        const wMax = Math.max(0.0001, ...filtered_edges.map((e) => e.weight));
 
-  // fresh copies — 3d-force-graph mutates node/link objects
-  const nodes = filtered_nodes.map(n => ({ ...n }));
-  const links = filtered_edges.map(e => ({ ...e }));
+        // fresh copies — 3d-force-graph mutates node/link objects
+        const nodes = filtered_nodes.map((n) => ({ ...n }));
+        const links = filtered_edges.map((e) => ({ ...e }));
 
-  if (!graph3d) {
-   try {
-    graph3d = ForceGraph3D()(document.getElementById("graph-3d"))
-      .backgroundColor("#0f1117")
-      .showNavInfo(false)
-      .nodeRelSize(4)
-      .nodeColor(() => NODE_COLOR_3D)
-      .nodeOpacity(0.92)
-      .nodeVal(n => nodeVal3d(n, mcMax))
-      .nodeLabel(n => `<b>${n.label}</b> · ${n.mention_count} mentions`)
-      .nodeThreeObjectExtend(true)
-      .nodeThreeObject(n => makeLabel(n, mcMax))
-      .linkColor(l => EDGE_COLORS[l.relation_type] || "#6a6a8a")
-      .linkOpacity(0.55)
-      .linkWidth(l => 0.4 + (l.weight / wMax) * 2.2)
-      .linkDirectionalArrowLength(3.5)
-      .linkDirectionalArrowRelPos(1)
-      .linkDirectionalParticles(l => l.relation_type === "SUPPLIES" ? 2 : 0)
-      .linkDirectionalParticleWidth(1.6)
-      .linkDirectionalParticleSpeed(0.01)
-      .onNodeClick(n => showNodeDetail(n, currentEdgesPlain))
-      .onLinkClick(l => showEdgeDetail(l))
-      .onBackgroundClick(() => {});
-    graph3d.d3Force("charge").strength(-240);
-    graph3d.d3Force("link").distance(l => 40 + node3dRadius(l.source, mcMax) + node3dRadius(l.target, mcMax));
-    built3dOnce = true;
-   } catch (e) {
-    graph3d = null;
-    show3dError("Could not initialise the 3D renderer (WebGL):<br>" +
-      (e && e.message ? e.message : e) +
-      "<br><br>Try enabling hardware acceleration, or use the 2D view.");
-    return;
-   }
-  } else {
-    // scales may change with filter — refresh accessors
-    graph3d
-      .nodeVal(n => nodeVal3d(n, mcMax))
-      .linkWidth(l => 0.4 + (l.weight / wMax) * 2.2)
-      .nodeThreeObject(n => makeLabel(n, mcMax));
-  }
+        if (!graph3d) {
+          try {
+            graph3d = ForceGraph3D()(document.getElementById("graph-3d"))
+              .backgroundColor("#0f1117")
+              .showNavInfo(false)
+              .nodeRelSize(4)
+              .nodeColor((n) => nodeColor3D(n))
+              .nodeVisibility((n) => activeTypes.has(nodeType(n)))
+              .linkVisibility((l) => edgeVisible(l))
+              .nodeOpacity(0.92)
+              .nodeVal((n) => nodeVal3d(n, mcMax))
+              .nodeLabel(
+                (n) => `<b>${n.label}</b> · ${n.mention_count} mentions`,
+              )
+              .nodeThreeObjectExtend(true)
+              .nodeThreeObject((n) => makeLabel(n, mcMax))
+              .linkColor((l) => EDGE_COLORS[l.relation_type] || "#6a6a8a")
+              .linkOpacity(0.55)
+              .linkWidth((l) => 0.4 + (l.weight / wMax) * 2.2)
+              .linkDirectionalArrowLength(3.5)
+              .linkDirectionalArrowRelPos(1)
+              .linkDirectionalParticles((l) =>
+                l.relation_type === "SUPPLIES" ? 2 : 0,
+              )
+              .linkDirectionalParticleWidth(1.6)
+              .linkDirectionalParticleSpeed(0.01)
+              .onNodeClick((n) => showNodeDetail(n, currentEdgesPlain))
+              .onLinkClick((l) => showEdgeDetail(l))
+              .onBackgroundClick(() => {});
+            graph3d.d3Force("charge").strength(-240);
+            graph3d
+              .d3Force("link")
+              .distance(
+                (l) =>
+                  40 +
+                  node3dRadius(l.source, mcMax) +
+                  node3dRadius(l.target, mcMax),
+              );
+            built3dOnce = true;
+          } catch (e) {
+            graph3d = null;
+            show3dError(
+              "Could not initialise the 3D renderer (WebGL):<br>" +
+                (e && e.message ? e.message : e) +
+                "<br><br>Try enabling hardware acceleration, or use the 2D view.",
+            );
+            return;
+          }
+        } else {
+          // scales may change with filter — refresh accessors
+          graph3d
+            .nodeVal((n) => nodeVal3d(n, mcMax))
+            .linkWidth((l) => 0.4 + (l.weight / wMax) * 2.2)
+            .nodeThreeObject((n) => makeLabel(n, mcMax));
+        }
 
-  // detail panel for 3D clicks needs plain (string source/target) edges
-  currentEdgesPlain = filtered_edges;
-  try {
-    graph3d.graphData({ nodes, links });
-  } catch (e) {
-    show3dError("3D render failed:<br>" + (e && e.message ? e.message : e));
-    return;
-  }
+        // detail panel for 3D clicks needs plain (string source/target) edges
+        currentEdgesPlain = filtered_edges;
+        try {
+          graph3d.graphData({ nodes, links });
+        } catch (e) {
+          show3dError(
+            "3D render failed:<br>" + (e && e.message ? e.message : e),
+          );
+          return;
+        }
 
-  // size to container + auto-frame so the graph is always in view
-  const c = document.getElementById("graph-3d");
-  graph3d.width(c.clientWidth).height(c.clientHeight);
-  setTimeout(() => { try { graph3d.zoomToFit(600, 60); } catch (e) {} }, 500);
-}
+        // size to container + auto-frame so the graph is always in view
+        const c = document.getElementById("graph-3d");
+        graph3d.width(c.clientWidth).height(c.clientHeight);
+        setTimeout(() => {
+          try {
+            graph3d.zoomToFit(600, 60);
+          } catch (e) {}
+        }, 500);
+      }
 
-let currentEdgesPlain = [];
+      let currentEdgesPlain = [];
 
-window.addEventListener("resize", () => {
-  if (graph3d && mode === "3d") {
-    const c = document.getElementById("graph-3d");
-    graph3d.width(c.clientWidth).height(c.clientHeight);
-  }
-});
+      window.addEventListener("resize", () => {
+        if (graph3d && mode === "3d") {
+          const c = document.getElementById("graph-3d");
+          graph3d.width(c.clientWidth).height(c.clientHeight);
+        }
+      });
 
-// ---- shared inspector -------------------------------------------------------
-function showNodeDetail(d, edges) {
-  const outEdges = edges.filter(e => e.source === d.id);
-  const inEdges  = edges.filter(e => e.target === d.id);
-  let html = `
+      // ---- shared inspector -------------------------------------------------------
+      function showNodeDetail(d, edges) {
+        const outEdges = edges.filter((e) => e.source === d.id);
+        const inEdges = edges.filter((e) => e.target === d.id);
+        let html = `
     <div class="detail-section">
       <h3>Node</h3>
       <div class="kv"><span class="k">ID</span><span class="v">${d.id}</span></div>
       <div class="kv"><span class="k">Mentions</span><span class="v">${d.mention_count}</span></div>
     </div>`;
 
-  if (outEdges.length) {
-    html += `<div class="detail-section"><h3>Outgoing (${outEdges.length})</h3>`;
-    outEdges.forEach(e => {
-      const c = EDGE_COLORS[e.relation_type] || "#888";
-      html += `<div style="margin-bottom:8px">
+        if (outEdges.length) {
+          html += `<div class="detail-section"><h3>Outgoing (${outEdges.length})</h3>`;
+          outEdges.forEach((e) => {
+            const c = EDGE_COLORS[e.relation_type] || "#888";
+            html += `<div style="margin-bottom:8px">
         <span class="edge-pill" style="background:${c}22;color:${c}">${e.relation_type}</span>
         <div class="kv"><span class="k">→</span><span class="v">${e.target}</span></div>
         ${e.what_flows ? `<div class="kv"><span class="k">flows</span><span class="v">${e.what_flows}</span></div>` : ""}
-        ${e.quantity != null ? `<div class="kv"><span class="k">qty</span><span class="v">${e.quantity} ${e.unit||""}</span></div>` : ""}
+        ${e.quantity != null ? `<div class="kv"><span class="k">qty</span><span class="v">${e.quantity} ${e.unit || ""}</span></div>` : ""}
         <div class="kv"><span class="k">date</span><span class="v">${e.date}</span></div>
         ${e.evidence ? `<div class="evidence-box">${e.evidence}</div>` : ""}
       </div>`;
-    });
-    html += "</div>";
-  }
+          });
+          html += "</div>";
+        }
 
-  if (inEdges.length) {
-    html += `<div class="detail-section"><h3>Incoming (${inEdges.length})</h3>`;
-    inEdges.forEach(e => {
-      const c = EDGE_COLORS[e.relation_type] || "#888";
-      html += `<div style="margin-bottom:8px">
+        if (inEdges.length) {
+          html += `<div class="detail-section"><h3>Incoming (${inEdges.length})</h3>`;
+          inEdges.forEach((e) => {
+            const c = EDGE_COLORS[e.relation_type] || "#888";
+            html += `<div style="margin-bottom:8px">
         <span class="edge-pill" style="background:${c}22;color:${c}">${e.relation_type}</span>
         <div class="kv"><span class="k">←</span><span class="v">${e.source}</span></div>
         ${e.what_flows ? `<div class="kv"><span class="k">flows</span><span class="v">${e.what_flows}</span></div>` : ""}
-        ${e.quantity != null ? `<div class="kv"><span class="k">qty</span><span class="v">${e.quantity} ${e.unit||""}</span></div>` : ""}
+        ${e.quantity != null ? `<div class="kv"><span class="k">qty</span><span class="v">${e.quantity} ${e.unit || ""}</span></div>` : ""}
         <div class="kv"><span class="k">date</span><span class="v">${e.date}</span></div>
       </div>`;
-    });
-    html += "</div>";
-  }
+          });
+          html += "</div>";
+        }
 
-  document.getElementById("detail").innerHTML = html;
-}
+        document.getElementById("detail").innerHTML = html;
+      }
 
-function showEdgeDetail(d) {
-  // 3d-force-graph replaces source/target with node objects — normalize
-  const srcId = typeof d.source === "object" ? d.source.id : d.source;
-  const tgtId = typeof d.target === "object" ? d.target.id : d.target;
-  const c = EDGE_COLORS[d.relation_type] || "#888";
-  const chunks = (d.source_chunk_ids || []).join("<br>");
-  document.getElementById("detail").innerHTML = `
+      function showEdgeDetail(d) {
+        // 3d-force-graph replaces source/target with node objects — normalize
+        const srcId = typeof d.source === "object" ? d.source.id : d.source;
+        const tgtId = typeof d.target === "object" ? d.target.id : d.target;
+        const c = EDGE_COLORS[d.relation_type] || "#888";
+        const chunks = (d.source_chunk_ids || []).join("<br>");
+        document.getElementById("detail").innerHTML = `
     <div class="detail-section">
       <h3>Edge</h3>
       <span class="edge-pill" style="background:${c}22;color:${c}">${d.relation_type}</span>
       <div class="kv"><span class="k">source</span><span class="v">${srcId}</span></div>
       <div class="kv"><span class="k">target</span><span class="v">${tgtId}</span></div>
       ${d.what_flows ? `<div class="kv"><span class="k">what_flows</span><span class="v">${d.what_flows}</span></div>` : ""}
-      ${d.quantity != null ? `<div class="kv"><span class="k">quantity</span><span class="v">${d.quantity} ${d.unit||""}</span></div>` : ""}
+      ${d.quantity != null ? `<div class="kv"><span class="k">quantity</span><span class="v">${d.quantity} ${d.unit || ""}</span></div>` : ""}
       <div class="kv"><span class="k">date</span><span class="v">${d.date}</span></div>
       <div class="kv"><span class="k">weight</span><span class="v">${d.weight}</span></div>
       <div class="kv"><span class="k">confidence</span><span class="v">${d.confidence}</span></div>
@@ -461,7 +883,7 @@ function showEdgeDetail(d) {
     ${d.evidence ? `<div class="detail-section"><h3>Evidence</h3><div class="evidence-box">${d.evidence}</div></div>` : ""}
     ${chunks ? `<div class="detail-section"><h3>Source chunks</h3><div class="kv"><span class="v" style="font-size:10px;color:#6070a0">${chunks}</span></div></div>` : ""}
   `;
-}
-</script>
-</body>
+      }
+    </script>
+  </body>
 </html>

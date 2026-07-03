@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from schema.models import RelationEdge, Company
+from pipeline.standardize.node_classifier import classify
 
 
 def build_node_list(
@@ -34,6 +35,7 @@ def build_node_list(
             "id": canonical_id,
             "label": canonical_id,
             "mention_count": mc,
+            "type": classify(canonical_id),
         })
     return nodes
 
