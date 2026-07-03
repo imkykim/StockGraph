@@ -321,6 +321,23 @@ function render3D() {
     return;
   }
 
+  // WebGL sanity check — if the browser/GPU can't give a context, say so
+  // instead of failing silently to a blank panel.
+  try {
+    const test = document.createElement("canvas");
+    if (!(test.getContext("webgl2") || test.getContext("webgl") ||
+          test.getContext("experimental-webgl"))) {
+      show3dError("This browser has no working WebGL context, so the 3D view " +
+        "can't render.<br><br>Enable hardware acceleration / WebGL " +
+        "(or try Chrome), then reload. The 2D view works without WebGL.");
+      return;
+    }
+  } catch (e) {
+    show3dError("WebGL is unavailable: " + (e && e.message ? e.message : e) +
+                "<br><br>The 2D view works without WebGL.");
+    return;
+  }
+
   const { nodes: filtered_nodes, edges: filtered_edges } = filteredData();
 
   const mcMax = Math.max(1, ...filtered_nodes.map(n => n.mention_count));
@@ -331,6 +348,7 @@ function render3D() {
   const links = filtered_edges.map(e => ({ ...e }));
 
   if (!graph3d) {
+   try {
     graph3d = ForceGraph3D()(document.getElementById("graph-3d"))
       .backgroundColor("#0f1117")
       .showNavInfo(false)
@@ -355,6 +373,13 @@ function render3D() {
     graph3d.d3Force("charge").strength(-240);
     graph3d.d3Force("link").distance(l => 40 + node3dRadius(l.source, mcMax) + node3dRadius(l.target, mcMax));
     built3dOnce = true;
+   } catch (e) {
+    graph3d = null;
+    show3dError("Could not initialise the 3D renderer (WebGL):<br>" +
+      (e && e.message ? e.message : e) +
+      "<br><br>Try enabling hardware acceleration, or use the 2D view.");
+    return;
+   }
   } else {
     // scales may change with filter — refresh accessors
     graph3d
