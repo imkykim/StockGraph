@@ -321,23 +321,6 @@ function render3D() {
     return;
   }
 
-  // WebGL sanity check — if the browser/GPU can't give a context, say so
-  // instead of failing silently to a blank panel.
-  try {
-    const test = document.createElement("canvas");
-    if (!(test.getContext("webgl2") || test.getContext("webgl") ||
-          test.getContext("experimental-webgl"))) {
-      show3dError("This browser has no working WebGL context, so the 3D view " +
-        "can't render.<br><br>Enable hardware acceleration / WebGL " +
-        "(or try Chrome), then reload. The 2D view works without WebGL.");
-      return;
-    }
-  } catch (e) {
-    show3dError("WebGL is unavailable: " + (e && e.message ? e.message : e) +
-                "<br><br>The 2D view works without WebGL.");
-    return;
-  }
-
   const { nodes: filtered_nodes, edges: filtered_edges } = filteredData();
 
   const mcMax = Math.max(1, ...filtered_nodes.map(n => n.mention_count));
