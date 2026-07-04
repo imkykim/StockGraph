@@ -2,8 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>ChainGraph — Phase 1 Inspector</title>
+    <title>ChainGraph — Supply Chain Inspector</title>
     <style>
+      :root {
+        --surface: #0f1117; /* graph canvas — palette validated against this */
+        --panel: #151827;
+        --panel-2: #10131e;
+        --border: #262b42;
+        --ink: #eef1fb;
+        --ink-2: #9aa3c7;
+        --ink-muted: #5d6485;
+        --accent: #3987e5;
+      }
       * {
         box-sizing: border-box;
         margin: 0;
@@ -11,8 +21,8 @@
       }
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #0f1117;
-        color: #e0e0e0;
+        background: var(--surface);
+        color: var(--ink);
         height: 100vh;
         overflow: hidden;
       }
@@ -32,17 +42,73 @@
       #graph-3d {
         display: none;
       }
+      #hint-3d {
+        position: absolute;
+        bottom: 10px;
+        left: 12px;
+        font-size: 10px;
+        color: var(--ink-muted);
+        pointer-events: none;
+        display: none;
+      }
+      #hint-2d {
+        position: absolute;
+        bottom: 10px;
+        left: 12px;
+        font-size: 10px;
+        color: var(--ink-muted);
+        pointer-events: none;
+      }
+      #fit-btn {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 5;
+        background: rgba(16, 19, 30, 0.85);
+        border: 1px solid var(--border);
+        color: var(--ink-2);
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 5px 10px;
+        cursor: pointer;
+        transition: border-color 0.15s;
+      }
+      #fit-btn:hover {
+        border-color: var(--accent);
+        color: var(--ink);
+      }
+      #tooltip {
+        position: absolute;
+        pointer-events: none;
+        background: rgba(13, 16, 26, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 11px;
+        line-height: 1.5;
+        color: var(--ink-2);
+        max-width: 280px;
+        display: none;
+        z-index: 10;
+      }
+      #tooltip b {
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      /* ---- sidebar ---- */
       #sidebar {
-        width: 340px;
-        background: #1a1d2e;
-        border-left: 1px solid #2d3050;
+        width: 360px;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
         display: flex;
         flex-direction: column;
         overflow: hidden;
       }
       #header {
-        padding: 14px 16px;
-        border-bottom: 1px solid #2d3050;
+        padding: 14px 16px 12px;
+        border-bottom: 1px solid var(--border);
       }
       #header .row {
         display: flex;
@@ -52,26 +118,25 @@
       }
       #header h1 {
         font-size: 15px;
-        font-weight: 600;
-        color: #a0a8d0;
-        letter-spacing: 0.5px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
       }
       #header p {
         font-size: 11px;
-        color: #555;
+        color: var(--ink-muted);
         margin-top: 3px;
       }
       #mode-toggle {
         display: flex;
-        background: #12151f;
-        border: 1px solid #2d3050;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
         border-radius: 6px;
         overflow: hidden;
       }
       #mode-toggle button {
         background: transparent;
         border: none;
-        color: #7080a8;
+        color: var(--ink-2);
         font-size: 11px;
         font-weight: 600;
         padding: 5px 12px;
@@ -82,9 +147,155 @@
           color 0.15s;
       }
       #mode-toggle button.active {
-        background: #3040a0;
+        background: var(--accent);
         color: #fff;
       }
+
+      #controls {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      #controls label {
+        color: var(--ink-2);
+        display: block;
+        margin-bottom: 4px;
+        font-size: 11px;
+      }
+      .search-wrap {
+        position: relative;
+      }
+      #search {
+        background: var(--panel-2);
+        color: var(--ink);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 12px;
+        width: 100%;
+        outline: none;
+      }
+      #search:focus {
+        border-color: var(--accent);
+      }
+      #search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 4px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        display: none;
+        z-index: 20;
+        max-height: 220px;
+        overflow-y: auto;
+      }
+      #search-results .item {
+        padding: 6px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      #search-results .item:hover,
+      #search-results .item.hi {
+        background: #1d2236;
+      }
+      #search-results .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex: none;
+      }
+      #search-results .meta {
+        margin-left: auto;
+        color: var(--ink-muted);
+        font-size: 10px;
+      }
+      .ctl-row {
+        display: flex;
+        gap: 10px;
+      }
+      .ctl-row > div {
+        flex: 1;
+      }
+      #week-select {
+        background: var(--panel-2);
+        color: var(--ink);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 5px 8px;
+        font-size: 11px;
+        width: 100%;
+      }
+      #weight-slider {
+        width: 100%;
+        accent-color: var(--accent);
+        margin-top: 6px;
+      }
+      .wk-btn {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        color: var(--ink-2);
+        border-radius: 6px;
+        font-size: 9px;
+        padding: 0 7px;
+        cursor: pointer;
+        transition: border-color 0.15s;
+      }
+      .wk-btn:hover {
+        border-color: var(--accent);
+        color: var(--ink);
+      }
+      #isolate-chip {
+        display: none;
+        align-items: center;
+        background: #1a2338;
+        border: 1px solid var(--accent);
+        border-radius: 20px;
+        color: var(--ink);
+        font-size: 10.5px;
+        padding: 3px 10px;
+        cursor: pointer;
+        width: fit-content;
+      }
+      #isolate-chip:hover {
+        background: #223050;
+      }
+      #isolate-chip b {
+        margin: 0 4px;
+      }
+      #stats {
+        font-size: 10.5px;
+        color: var(--ink-muted);
+      }
+      #hubs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .hub-chip {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        color: var(--ink-2);
+        font-size: 10.5px;
+        padding: 3px 9px;
+        cursor: pointer;
+        transition: border-color 0.15s;
+      }
+      .hub-chip:hover {
+        border-color: var(--accent);
+        color: var(--ink);
+      }
+
+      /* ---- detail ---- */
       #detail {
         flex: 1;
         overflow-y: auto;
@@ -94,11 +305,25 @@
         margin-bottom: 14px;
       }
       .detail-section h3 {
-        font-size: 11px;
+        font-size: 10.5px;
         text-transform: uppercase;
         letter-spacing: 1px;
-        color: #5a6080;
-        margin-bottom: 6px;
+        color: var(--ink-muted);
+        margin-bottom: 7px;
+      }
+      .node-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 4px;
+        word-break: break-word;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 10.5px;
+        font-weight: 600;
+        margin-right: 4px;
       }
       .kv {
         display: flex;
@@ -107,23 +332,115 @@
         font-size: 12px;
       }
       .kv .k {
-        color: #7080a8;
-        min-width: 100px;
+        color: var(--ink-2);
+        min-width: 90px;
       }
       .kv .v {
-        color: #c8d0f0;
+        color: var(--ink);
         word-break: break-word;
       }
+      .conn {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 9px;
+        margin-bottom: 6px;
+        font-size: 11.5px;
+      }
+      .conn .head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .conn .partner {
+        font-weight: 700;
+        color: var(--ink);
+        cursor: pointer;
+        text-decoration: underline;
+        text-decoration-color: #3a4162;
+        text-underline-offset: 2px;
+      }
+      .conn .partner:hover {
+        text-decoration-color: var(--accent);
+      }
+      .conn .dir {
+        color: var(--ink-muted);
+        font-size: 12px;
+      }
+      .conn .sub {
+        color: var(--ink-2);
+        margin-top: 3px;
+        line-height: 1.45;
+      }
+      .conn .date {
+        margin-left: auto;
+        color: var(--ink-muted);
+        font-size: 10px;
+      }
+      .edge-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 10.5px;
+        font-weight: 600;
+      }
+      .evidence-box {
+        background: var(--panel-2);
+        border-left: 3px solid var(--accent);
+        padding: 8px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        color: var(--ink-2);
+        line-height: 1.55;
+        margin-top: 6px;
+        word-break: break-word;
+      }
+      .placeholder {
+        color: var(--ink-muted);
+        font-size: 12px;
+        padding: 8px 0;
+        line-height: 1.6;
+      }
+
+      /* ---- legend ---- */
       #legend {
         padding: 12px 16px;
-        border-top: 1px solid #2d3050;
+        border-top: 1px solid var(--border);
       }
       #legend h3 {
-        font-size: 11px;
+        font-size: 10.5px;
         text-transform: uppercase;
-        color: #5a6080;
+        color: var(--ink-muted);
         letter-spacing: 1px;
         margin-bottom: 8px;
+      }
+      #guide summary {
+        font-size: 10.5px;
+        color: var(--ink-muted);
+        cursor: pointer;
+        margin-top: 10px;
+        user-select: none;
+        list-style-position: inside;
+      }
+      #guide summary:hover {
+        color: var(--ink-2);
+      }
+      #guide .guide-body {
+        margin-top: 7px;
+        font-size: 10.5px;
+        color: var(--ink-2);
+        line-height: 1.55;
+        max-height: 230px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+      #guide .guide-body p {
+        margin-bottom: 7px;
+      }
+      #guide .guide-body b {
+        color: var(--ink);
+        font-weight: 600;
       }
       .legend-row {
         display: flex;
@@ -131,7 +448,7 @@
         gap: 8px;
         margin-bottom: 5px;
         font-size: 11px;
-        color: #9090b0;
+        color: var(--ink-2);
       }
       .type-row {
         cursor: pointer;
@@ -139,30 +456,37 @@
       }
       .type-row input {
         margin: 0;
-        accent-color: #5b8dee;
+        accent-color: var(--accent);
       }
       .type-row .swatch {
-        width: 12px;
-        height: 12px;
+        width: 11px;
+        height: 11px;
         border-radius: 50%;
       }
       .type-row .rel-swatch {
-        width: 16px;
-        height: 3px;
-        border-radius: 2px;
+        width: 18px;
+        height: 0;
+        border-radius: 0;
+        border-top-width: 3px;
+        border-top-style: solid;
       }
-      .swatch {
-        width: 28px;
-        height: 3px;
-        border-radius: 2px;
-      }
+
+      /* ---- graph marks ---- */
       svg {
         width: 100%;
         height: 100%;
       }
-      .node circle {
+      .node {
         cursor: pointer;
-        stroke-width: 2px;
+      }
+      .node circle {
+        stroke: rgba(255, 255, 255, 0.16);
+        stroke-width: 1.5px;
+        transition: opacity 0.15s;
+      }
+      .node.focus circle {
+        stroke: #fff;
+        stroke-width: 2.5px;
       }
       .node text {
         pointer-events: none;
@@ -174,63 +498,23 @@
         stroke-width: 4px;
         stroke-linejoin: round;
       }
+      .node.dim {
+        opacity: 0.1;
+      }
       .link {
         fill: none;
-        stroke-opacity: 0.7;
+        transition: opacity 0.15s;
       }
-      .link.selected {
-        stroke-opacity: 1;
+      .link.dim {
+        opacity: 0.06;
       }
-      .placeholder {
-        color: #444;
-        font-size: 12px;
-        padding: 8px 0;
+      .link.focus {
+        opacity: 1 !important;
       }
-      .edge-pill {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-size: 11px;
-        font-weight: 600;
-        margin-bottom: 8px;
-      }
-      .evidence-box {
-        background: #12151f;
-        border-left: 3px solid #3040a0;
-        padding: 8px 10px;
-        border-radius: 4px;
-        font-size: 11px;
-        color: #a0b0d0;
-        line-height: 1.5;
-        margin-top: 6px;
-      }
-      #week-filter {
-        padding: 10px 16px;
-        border-bottom: 1px solid #2d3050;
-        font-size: 11px;
-      }
-      #week-filter label {
-        color: #7080a8;
-        display: block;
-        margin-bottom: 4px;
-      }
-      #week-select {
-        background: #12151f;
-        color: #c0c8e8;
-        border: 1px solid #2d3050;
-        border-radius: 4px;
-        padding: 4px 8px;
-        font-size: 11px;
-        width: 100%;
-      }
-      #hint-3d {
-        position: absolute;
-        bottom: 10px;
-        left: 12px;
-        font-size: 10px;
-        color: #556;
-        pointer-events: none;
-        display: none;
+      .link-hit {
+        fill: none;
+        stroke: transparent;
+        cursor: pointer;
       }
     </style>
   </head>
@@ -239,33 +523,119 @@
       <div id="graph-container">
         <div id="svg-container"><svg id="svg"></svg></div>
         <div id="graph-3d"></div>
-        <div id="hint-3d">drag = rotate · scroll = zoom · right-drag = pan</div>
+        <div id="hint-2d">
+          click = inspect · drag node = pin · double-click = unpin · scroll =
+          zoom · Esc = clear
+        </div>
+        <div id="hint-3d">
+          drag = rotate · scroll = zoom · right-drag = pan · drag node = pin ·
+          right-click node = unpin · Esc = clear
+        </div>
+        <button id="fit-btn" title="Fit graph to view">⛶ Fit</button>
+        <div id="tooltip"></div>
       </div>
       <div id="sidebar">
         <div id="header">
           <div class="row">
-            <h1>ChainGraph Phase 1</h1>
+            <h1>ChainGraph</h1>
             <div id="mode-toggle">
               <button id="btn-2d" class="active">2D</button>
               <button id="btn-3d">3D</button>
             </div>
           </div>
-          <p>Click a node or edge to inspect</p>
+          <p>Supply-chain graph from weekly tech reports</p>
         </div>
-        <div id="week-filter">
-          <label>Filter by week</label>
-          <select id="week-select">
-            <option value="all">All weeks</option>
-          </select>
+        <div id="controls">
+          <div class="search-wrap">
+            <input
+              id="search"
+              type="text"
+              placeholder="Search entity…  (NVIDIA, 杰普特, …)"
+              autocomplete="off"
+            />
+            <div id="search-results"></div>
+          </div>
+          <div class="ctl-row">
+            <div>
+              <label>Week</label>
+              <div style="display: flex; gap: 4px">
+                <select id="week-select" style="flex: 1; min-width: 0">
+                  <option value="all">All weeks</option>
+                </select>
+                <button id="week-prev" class="wk-btn" title="Older week">
+                  ◀
+                </button>
+                <button id="week-next" class="wk-btn" title="Newer week">
+                  ▶
+                </button>
+              </div>
+            </div>
+            <div>
+              <label>Min edge weight: <span id="weight-label">0</span></label>
+              <input
+                id="weight-slider"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value="0"
+              />
+            </div>
+          </div>
+          <button id="isolate-chip" title="Exit isolation"></button>
+          <div id="hubs"></div>
+          <div id="stats"></div>
         </div>
         <div id="detail">
-          <p class="placeholder">Hover over a node or edge for details.</p>
+          <p class="placeholder">
+            Click a node or edge to inspect.<br />Hovering previews its
+            neighborhood; the search box or hub chips jump to an entity.
+          </p>
         </div>
         <div id="legend">
           <h3>Node types</h3>
           <div id="node-type-filter"></div>
           <h3 style="margin-top: 12px">Relation types</h3>
           <div id="rel-type-filter"></div>
+          <details id="guide">
+            <summary>How to read this graph</summary>
+            <div class="guide-body">
+              <p>
+                <b>Circle size</b> — how often the entity is mentioned in the
+                reports.
+              </p>
+              <p>
+                <b>Line width</b> — combined <b>weight</b> of every record
+                between the two entities, per direction. Each record's weight =
+                (mentions ÷ max mentions) × contract scale. Contract scale is
+                the reported quantity (GW, 亿USD, K units, WPM…), log-scaled
+                and normalized <i>within its own unit family</i> — so it ranks
+                deal sizes relatively, not in absolute dollars. Records with no
+                quantity get a 0.1 floor. The thickest lines are big deals
+                mentioned repeatedly.
+              </p>
+              <p><b>Line opacity</b> — extraction confidence.</p>
+              <p>
+                <b>Line style</b> — solid = SUPPLIES / CONTRACTS_WITH, dashed =
+                COMPETES_WITH, dotted = CO_MENTION.
+              </p>
+              <p>
+                <b>Arrow</b> — direction of the relation (e.g. supplier →
+                customer).
+              </p>
+              <p>
+                <b>Click a line</b> — see its individual records with dates,
+                quantities and evidence; click a node for all its
+                relationships.
+              </p>
+              <p>
+                <b>Isolate</b> — a node's detail panel offers “⊙ Isolate
+                neighborhood”: only that entity, its direct partners and the
+                links among them stay. Exit with the chip above the stats or
+                Esc.
+              </p>
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -284,30 +654,25 @@
     <script src="lib/three-spritetext.min.js"></script>
     <script src="lib/3d-force-graph.min.js"></script>
     <script>
+      // Colors are validated (scripts/validate_palette.js, dark surface #0f1117):
+      // node set passes all-pairs CVD with direct labels as secondary encoding;
+      // edge set's red↔aqua pair sits in the 8–12 floor band, so COMPETES_WITH
+      // additionally carries a dash pattern and CO_MENTION is dotted gray.
       const EDGE_COLORS = {
-        SUPPLIES: "#5b8dee",
-        CONTRACTS_WITH: "#f0a84a",
-        COMPETES_WITH: "#e05a7a",
-        CO_MENTION: "#6a6a8a",
+        SUPPLIES: "#199e70",
+        CONTRACTS_WITH: "#d95926",
+        COMPETES_WITH: "#e66767",
+        CO_MENTION: "#6e7691",
       };
-
-      const NODE_COLOR = "#2a3060";
-      const NODE_STROKE = "#4a5080";
-      const NODE_COLOR_3D = "#8fa4ff";
-
-      // Node fill by type. COMPANY is the default deep blue; the others are the
-      // non-company nodes the extractor over-produces (sectors/regions/gov).
+      const EDGE_DASH = {
+        COMPETES_WITH: "7 5",
+        CO_MENTION: "2 5",
+      };
       const NODE_TYPE_COLORS = {
-        COMPANY: "#2a3060",
-        SECTOR: "#8a5a2a",
-        REGION: "#2a6a5a",
-        INSTITUTION: "#6a2a5a",
-      };
-      const NODE_TYPE_COLORS_3D = {
-        COMPANY: "#8fa4ff",
-        SECTOR: "#f0a84a",
-        REGION: "#4ad0b0",
-        INSTITUTION: "#e07ac0",
+        COMPANY: "#3987e5",
+        SECTOR: "#c98500",
+        REGION: "#d55181",
+        INSTITUTION: "#008300",
       };
       const NODE_TYPE_LABELS = {
         COMPANY: "Company",
@@ -315,22 +680,40 @@
         REGION: "Region",
         INSTITUTION: "Institution",
       };
+      const DIM_NODE_3D = "#232637";
+      const DIM_LINK_3D = "#1b1e2c";
+
       const nodeType = (n) => n.type || "COMPANY";
-      const nodeColor2D = (n) =>
-        NODE_TYPE_COLORS[nodeType(n)] || NODE_COLOR;
-      const nodeColor3D = (n) =>
-        NODE_TYPE_COLORS_3D[nodeType(n)] || NODE_COLOR_3D;
+      const nodeColor = (n) => NODE_TYPE_COLORS[nodeType(n)] || "#3987e5";
+      const esc = (s) =>
+        s == null
+          ? ""
+          : String(s)
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;");
 
       let allNodes = [],
         allEdges = [],
         activeWeek = "all",
+        isolateId = null, // restrict view to this entity's 1-hop neighborhood
+        minWeight = 0,
         activeTypes = new Set(Object.keys(NODE_TYPE_COLORS)),
         activeRelTypes = new Set(Object.keys(EDGE_COLORS)),
         typeById = new Map(),
         mode = "2d";
-      let simulation, svg, g, linkGroup, nodeGroup;
-      let graph3d = null,
-        built3dOnce = false;
+      let simulation, svg, g, linkGroup, hitGroup, nodeGroup, zoomBehavior;
+      let userInteracted2D = false; // stops auto-fit once the user pans/zooms/drags
+      let userInteracted3D = false; // same, for the 3D camera
+      let graph3d = null;
+      let wScale2D = null; // 2D bundle width scale (set per render)
+      let wMax3d = 1; // 3D max combined bundle weight (set per render)
+      let sprites3d = new Map(); // node id → label sprite (current 3D scene)
+      let simNodesById = new Map(); // current 2D sim nodes
+      let nodes3dById = new Map(); // current 3D node objects
+      let currentEdgesPlain = []; // week-filtered edges with string endpoints
+      let focus = null; // sticky selection: {kind:'node',id} | {kind:'edge',ref,srcId,tgtId}
+      let hoverFocus = null; // transient hover preview (only when focus == null)
 
       // Prefer live file when served (auto-fresh); fall back to embedded data so the
       // page also works when opened directly from disk (file://), no server needed.
@@ -346,9 +729,9 @@
             return;
           }
           document.getElementById("detail").innerHTML =
-            `<p style="color:#e05a7a;font-size:12px">Could not load graph data.</p>
+            `<p style="color:#e66767;font-size:12px">Could not load graph data.</p>
        <p class="placeholder" style="margin-top:8px">Regenerate the embedded copy:<br>
-       <code style="color:#a0b0d0">python3 -c "import json;d=json.load(open('data/output/graph.json'));open('viz/graph-data.js','w').write('window.EMBEDDED_GRAPH='+json.dumps(d,ensure_ascii=False)+';')"</code></p>`;
+       <code style="color:#9aa3c7">python3 -c "import json;d=json.load(open('data/output/graph.json'));open('viz/graph-data.js','w').write('window.EMBEDDED_GRAPH='+json.dumps(d,ensure_ascii=False)+';')"</code></p>`;
         });
 
       function init(data) {
@@ -358,21 +741,34 @@
 
         buildTypeFilter();
         buildRelTypeFilter();
+        buildHubChips();
+        buildSearch();
 
         // Populate week filter
-        const weeks = [...new Set(data.edges.map((e) => e.date))]
-          .sort()
-          .reverse();
+        const weeks = [...new Set(allEdges.map((e) => e.date))].sort().reverse();
         const sel = document.getElementById("week-select");
         weeks.forEach((w) => {
           const opt = document.createElement("option");
           opt.value = w;
-          opt.textContent = w;
+          opt.textContent = `${w.slice(0, 4)}-${w.slice(4, 6)}-${w.slice(6)}`;
           sel.appendChild(opt);
         });
         sel.addEventListener("change", () => {
           activeWeek = sel.value;
+          clearFocus();
           renderActive();
+        });
+
+        // Weight slider prunes weak edges (visibility only — layout stays put)
+        const slider = document.getElementById("weight-slider");
+        slider.max = String(Math.max(...allEdges.map((e) => e.weight), 0.1));
+        slider.addEventListener("input", () => {
+          minWeight = +slider.value;
+          document.getElementById("weight-label").textContent =
+            minWeight.toFixed(2);
+          applyVisibility();
+          applyFocus();
+          updateStats();
         });
 
         // 2D scaffold
@@ -383,10 +779,11 @@
             .append("marker")
             .attr("id", `arrow-${type}`)
             .attr("viewBox", "0 -5 10 10")
-            .attr("refX", 22)
+            .attr("refX", 9)
             .attr("refY", 0)
-            .attr("markerWidth", 6)
-            .attr("markerHeight", 6)
+            .attr("markerWidth", 8)
+            .attr("markerHeight", 8)
+            .attr("markerUnits", "userSpaceOnUse")
             .attr("orient", "auto")
             .append("path")
             .attr("d", "M0,-5L10,0L0,5")
@@ -394,23 +791,133 @@
         });
         g = svg.append("g");
         linkGroup = g.append("g").attr("class", "links");
+        hitGroup = g.append("g").attr("class", "link-hits");
         nodeGroup = g.append("g").attr("class", "nodes");
-        svg.call(
-          d3
-            .zoom()
-            .scaleExtent([0.2, 4])
-            .on("zoom", (ev) => g.attr("transform", ev.transform)),
-        );
+        zoomBehavior = d3
+          .zoom()
+          .scaleExtent([0.15, 5])
+          .on("zoom", (ev) => {
+            if (ev.sourceEvent) userInteracted2D = true;
+            g.attr("transform", ev.transform);
+          });
+        svg.call(zoomBehavior).on("dblclick.zoom", null);
+        svg.on("click", () => clearFocus());
 
-        // Mode toggle
         document
           .getElementById("btn-2d")
           .addEventListener("click", () => setMode("2d"));
         document
           .getElementById("btn-3d")
           .addEventListener("click", () => setMode("3d"));
+        window.addEventListener("keydown", (ev) => {
+          if (ev.key === "Escape") {
+            if (focus || hoverFocus) clearFocus();
+            else exitIsolate();
+          }
+        });
+        document
+          .getElementById("week-prev")
+          .addEventListener("click", () => stepWeek(-1));
+        document
+          .getElementById("week-next")
+          .addEventListener("click", () => stepWeek(1));
+        document
+          .getElementById("isolate-chip")
+          .addEventListener("click", () => exitIsolate());
+        document.getElementById("fit-btn").addEventListener("click", () => {
+          if (mode === "2d") fitGraph2D(true);
+          else if (graph3d) {
+            try {
+              graph3d.zoomToFit(600, 60);
+            } catch (e) {}
+          }
+        });
 
         render2D();
+        updateStats();
+
+        // deep-linkable state, e.g. inspect.html?mode=3d&isolate=NVIDIA
+        const params = new URLSearchParams(location.search);
+        if (params.get("mode") === "3d") setMode("3d");
+        const iso = params.get("isolate");
+        if (iso && typeById.has(iso)) isolateEntity(iso);
+      }
+
+      // Step through the week dropdown: +1 = newer (ending at "All weeks"),
+      // -1 = older.
+      function stepWeek(dir) {
+        const sel = document.getElementById("week-select");
+        const i =
+          dir < 0
+            ? Math.min(sel.options.length - 1, sel.selectedIndex + 1)
+            : Math.max(0, sel.selectedIndex - 1);
+        if (i !== sel.selectedIndex) {
+          sel.selectedIndex = i;
+          sel.dispatchEvent(new Event("change"));
+        }
+      }
+
+      // ---- isolate mode -------------------------------------------------------------
+      function updateIsolateChip() {
+        const chip = document.getElementById("isolate-chip");
+        if (!isolateId) {
+          chip.style.display = "none";
+          return;
+        }
+        chip.style.display = "inline-flex";
+        chip.innerHTML = `⊙ Isolated: <b>${esc(isolateId)}</b> ×`;
+      }
+
+      // Rebuild the view around one entity's neighborhood, keeping it selected.
+      function isolateEntity(id) {
+        isolateId = id;
+        updateIsolateChip();
+        renderActive();
+        focus = { kind: "node", id };
+        hoverFocus = null;
+        const n = allNodes.find((x) => x.id === id);
+        if (n) showNodeDetail(n, currentEdgesPlain);
+        applyFocus();
+      }
+
+      function exitIsolate() {
+        if (!isolateId) return;
+        isolateId = null;
+        updateIsolateChip();
+        renderActive();
+        applyFocus();
+      }
+
+      // Fit the whole 2D graph into the viewport (used while the layout settles).
+      function fitGraph2D(animate) {
+        const nodes = [...simNodesById.values()];
+        if (!nodes.length) return;
+        const xs = nodes.map((n) => n.x),
+          ys = nodes.map((n) => n.y);
+        const pad = 60;
+        const minX = Math.min(...xs) - pad,
+          maxX = Math.max(...xs) + pad;
+        const minY = Math.min(...ys) - pad,
+          maxY = Math.max(...ys) + pad;
+        const c = document.getElementById("graph-container");
+        const k = Math.max(
+          0.15,
+          Math.min(
+            1.4,
+            c.clientWidth / (maxX - minX),
+            c.clientHeight / (maxY - minY),
+          ),
+        );
+        const t = d3.zoomIdentity
+          .translate(
+            c.clientWidth / 2 - (k * (minX + maxX)) / 2,
+            c.clientHeight / 2 - (k * (minY + maxY)) / 2,
+          )
+          .scale(k);
+        (animate ? svg.transition().duration(400) : svg).call(
+          zoomBehavior.transform,
+          t,
+        );
       }
 
       // ---- shared data prep -------------------------------------------------------
@@ -418,26 +925,87 @@
       const linkId = (endpoint) =>
         endpoint && endpoint.id != null ? endpoint.id : endpoint;
 
-      // An edge shows only if its relation type is on AND both endpoints' node
-      // types are on.
+      // An edge shows only if its relation type is on, it clears the weight
+      // threshold, AND both endpoints' node types are on.
       const edgeVisible = (e) =>
         activeRelTypes.has(e.relation_type) &&
+        e.weight >= minWeight &&
         typeActive(linkId(e.source)) &&
         typeActive(linkId(e.target));
 
-      // Layout is built from the WEEK filter only (all node types included), so
-      // toggling a type never reshuffles positions — it just flips visibility.
+      // Layout is built from the WEEK filter only (all node types / weights
+      // included), so toggling a type or dragging the weight slider never
+      // reshuffles positions — it just flips visibility.
       function weekData() {
-        const edges =
+        let edges =
           activeWeek === "all"
             ? allEdges
             : allEdges.filter((e) => e.date === activeWeek);
+        if (isolateId) {
+          // the focal entity, its direct partners, and the links among them
+          const hood = new Set([isolateId]);
+          edges.forEach((e) => {
+            if (e.source === isolateId) hood.add(e.target);
+            if (e.target === isolateId) hood.add(e.source);
+          });
+          edges = edges.filter(
+            (e) => hood.has(e.source) && hood.has(e.target),
+          );
+        }
         const ids = new Set(edges.flatMap((e) => [e.source, e.target]));
         const nodes = allNodes.filter((n) => ids.has(n.id));
         return { nodes, edges };
       }
 
-      // ---- node-type legend + filter ---------------------------------------------
+      // ---- edge bundling ------------------------------------------------------------
+      // All records sharing a direction (A→B) render as ONE link — the detail
+      // panel lists the individual records. Width encodes the combined weight
+      // of the records that pass the current filters; color/dash follow the
+      // dominant (highest-weight) relation type among them.
+      function buildBundles(edges) {
+        const map = new Map();
+        edges.forEach((e) => {
+          const key = e.source + "→" + e.target;
+          if (!map.has(key))
+            map.set(key, { source: e.source, target: e.target, members: [] });
+          map.get(key).members.push(e);
+        });
+        return [...map.values()];
+      }
+      const bundleVisibleMembers = (b) => b.members.filter(edgeVisible);
+      const bundleWeight = (b) =>
+        bundleVisibleMembers(b).reduce((s, m) => s + m.weight, 0);
+      const bundleTotalWeight = (b) =>
+        b.members.reduce((s, m) => s + m.weight, 0);
+      function bundleDominant(b) {
+        const w = {};
+        let best = b.members[0].relation_type,
+          bw = -1;
+        bundleVisibleMembers(b).forEach((m) => {
+          w[m.relation_type] = (w[m.relation_type] || 0) + m.weight;
+          if (w[m.relation_type] > bw) {
+            bw = w[m.relation_type];
+            best = m.relation_type;
+          }
+        });
+        return best;
+      }
+      const bundleConfidence = (b) =>
+        Math.max(0.7, ...bundleVisibleMembers(b).map((m) => m.confidence));
+
+      // A node is shown when its type is on and it has ≥1 visible edge.
+      function visibleNodeIds(links) {
+        const ids = new Set();
+        links.forEach((l) => {
+          if (edgeVisible(l)) {
+            ids.add(linkId(l.source));
+            ids.add(linkId(l.target));
+          }
+        });
+        return ids;
+      }
+
+      // ---- filters / chrome ---------------------------------------------------------
       function buildTypeFilter() {
         const counts = {};
         allNodes.forEach((n) => {
@@ -456,12 +1024,13 @@
           cb.addEventListener("change", () => {
             cb.checked ? activeTypes.add(t) : activeTypes.delete(t);
             // Visibility-only update — do NOT rebuild the layout.
-            if (mode === "2d") applyTypeVisibility2D();
-            else applyTypeVisibility3D();
+            applyVisibility();
+            applyFocus();
+            updateStats();
           });
           const sw = document.createElement("div");
           sw.className = "swatch";
-          sw.style.background = NODE_TYPE_COLORS_3D[t];
+          sw.style.background = NODE_TYPE_COLORS[t];
           const txt = document.createElement("span");
           txt.textContent = `${NODE_TYPE_LABELS[t]} (${counts[t]})`;
           row.append(cb, sw, txt);
@@ -486,12 +1055,14 @@
           cb.addEventListener("change", () => {
             cb.checked ? activeRelTypes.add(t) : activeRelTypes.delete(t);
             // Visibility-only update — do NOT rebuild the layout.
-            if (mode === "2d") applyTypeVisibility2D();
-            else applyTypeVisibility3D();
+            applyVisibility();
+            applyFocus();
+            updateStats();
           });
           const sw = document.createElement("div");
           sw.className = "swatch rel-swatch";
-          sw.style.background = EDGE_COLORS[t];
+          sw.style.borderTopColor = EDGE_COLORS[t];
+          if (EDGE_DASH[t]) sw.style.borderTopStyle = "dashed";
           const txt = document.createElement("span");
           txt.textContent = `${t} (${counts[t]})`;
           row.append(cb, sw, txt);
@@ -499,52 +1070,402 @@
         });
       }
 
+      function buildHubChips() {
+        const top = [...allNodes]
+          .sort((a, b) => b.mention_count - a.mention_count)
+          .slice(0, 5);
+        const box = document.getElementById("hubs");
+        box.innerHTML = "";
+        top.forEach((n) => {
+          const chip = document.createElement("button");
+          chip.className = "hub-chip";
+          chip.textContent = `${n.label} · ${n.mention_count}`;
+          chip.addEventListener("click", () => focusEntity(n.id));
+          box.appendChild(chip);
+        });
+      }
+
+      function updateStats() {
+        const { edges } = weekData();
+        const vis = edges.filter(edgeVisible);
+        const ids = visibleNodeIds(vis);
+        const linkCount = new Set(vis.map((e) => e.source + "→" + e.target))
+          .size;
+        document.getElementById("stats").textContent =
+          `${ids.size} nodes · ${linkCount} edges · ${vis.length} records` +
+          (minWeight > 0 ? ` (weight ≥ ${minWeight.toFixed(2)})` : "");
+      }
+
+      // ---- search -------------------------------------------------------------------
+      function buildSearch() {
+        const input = document.getElementById("search");
+        const list = document.getElementById("search-results");
+        let matches = [];
+
+        const renderList = () => {
+          list.innerHTML = "";
+          if (!matches.length) {
+            list.style.display = "none";
+            return;
+          }
+          matches.forEach((n, i) => {
+            const row = document.createElement("div");
+            row.className = "item" + (i === 0 ? " hi" : "");
+            row.innerHTML = `<span class="dot" style="background:${nodeColor(n)}"></span>
+              <span>${esc(n.label)}</span>
+              <span class="meta">${NODE_TYPE_LABELS[nodeType(n)]} · ${n.mention_count}</span>`;
+            // mousedown (not click) so it fires before the input's blur
+            row.addEventListener("mousedown", (ev) => {
+              ev.preventDefault();
+              pick(n.id);
+            });
+            list.appendChild(row);
+          });
+          list.style.display = "block";
+        };
+
+        const pick = (id) => {
+          input.value = "";
+          matches = [];
+          renderList();
+          input.blur();
+          focusEntity(id);
+        };
+
+        input.addEventListener("input", () => {
+          const q = input.value.trim().toLowerCase();
+          matches = !q
+            ? []
+            : allNodes
+                .filter((n) => n.label.toLowerCase().includes(q))
+                .sort((a, b) => b.mention_count - a.mention_count)
+                .slice(0, 8);
+          renderList();
+        });
+        input.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" && matches.length) pick(matches[0].id);
+          if (ev.key === "Escape") {
+            matches = [];
+            renderList();
+            input.blur();
+          }
+        });
+        input.addEventListener("blur", () => {
+          setTimeout(() => {
+            matches = [];
+            renderList();
+          }, 120);
+        });
+      }
+
+      // Select an entity, show its detail, and fly the camera to it.
+      function focusEntity(id) {
+        // jumping to an entity outside the current isolation scope exits it
+        if (isolateId && id !== isolateId) {
+          const present =
+            mode === "2d" ? simNodesById.has(id) : nodes3dById.has(id);
+          if (!present) {
+            isolateId = null;
+            updateIsolateChip();
+            renderActive();
+          }
+        }
+        focus = { kind: "node", id };
+        hoverFocus = null;
+        const n = allNodes.find((x) => x.id === id);
+        if (n) showNodeDetail(n, currentEdgesPlain);
+        applyFocus();
+        if (mode === "2d") {
+          userInteracted2D = true; // the camera is now the user's
+          const sn = simNodesById.get(id);
+          if (sn) {
+            const c = document.getElementById("graph-container");
+            const k = 1.15;
+            svg
+              .transition()
+              .duration(600)
+              .call(
+                zoomBehavior.transform,
+                d3.zoomIdentity
+                  .translate(
+                    c.clientWidth / 2 - k * sn.x,
+                    c.clientHeight / 2 - k * sn.y,
+                  )
+                  .scale(k),
+              );
+          }
+        } else if (graph3d) {
+          userInteracted3D = true; // the camera is now the user's
+          try {
+            graph3d.controls().autoRotate = false;
+          } catch (e) {}
+          const n3 = nodes3dById.get(id);
+          if (n3 && n3.x != null) {
+            const dist = 180;
+            const r = Math.hypot(n3.x, n3.y, n3.z) || 1;
+            const ratio = 1 + dist / r;
+            graph3d.cameraPosition(
+              { x: n3.x * ratio, y: n3.y * ratio, z: n3.z * ratio },
+              n3,
+              900,
+            );
+          }
+        }
+      }
+
+      function clearFocus() {
+        if (!focus && !hoverFocus) return;
+        focus = null;
+        hoverFocus = null;
+        applyFocus();
+        document.getElementById("detail").innerHTML =
+          `<p class="placeholder">Click a node or edge to inspect.<br />Hovering previews its neighborhood; the search box or hub chips jump to an entity.</p>`;
+      }
+
+      // ---- focus / neighborhood highlight ------------------------------------------
+      const effectiveFocus = () => focus || hoverFocus;
+
+      // Given the current focus, which nodes stay lit?
+      function focusNodeSet() {
+        const f = effectiveFocus();
+        if (!f) return null;
+        const set = new Set();
+        if (f.kind === "node") {
+          set.add(f.id);
+          currentEdgesPlain.forEach((e) => {
+            if (!edgeVisible(e)) return;
+            if (e.source === f.id) set.add(e.target);
+            if (e.target === f.id) set.add(e.source);
+          });
+        } else {
+          set.add(f.srcId);
+          set.add(f.tgtId);
+        }
+        return set;
+      }
+
+      function linkInFocus(l, f) {
+        if (f.kind === "edge") return l === f.ref;
+        return linkId(l.source) === f.id || linkId(l.target) === f.id;
+      }
+
+      function applyFocus() {
+        if (mode === "2d") applyFocus2D();
+        applyFocus3D(); // no-op until the 3D scene exists
+      }
+
+      function applyFocus2D() {
+        if (!nodeGroup) return;
+        const f = effectiveFocus();
+        const set = focusNodeSet();
+        nodeGroup
+          .selectAll("g.node")
+          .classed("dim", (d) => !!f && !set.has(d.id))
+          .classed("focus", (d) => !!f && f.kind === "node" && d.id === f.id);
+        linkGroup
+          .selectAll("path.link")
+          .classed("dim", (d) => !!f && !linkInFocus(d, f))
+          .classed(
+            "focus",
+            (d) => !!f && f.kind === "edge" && linkInFocus(d, f),
+          );
+      }
+
+      function applyFocus3D() {
+        if (!graph3d) return;
+        // Re-setting the accessors makes 3d-force-graph re-evaluate every object.
+        graph3d
+          .nodeColor((n) => {
+            const set = focusNodeSet();
+            return !set || set.has(n.id) ? nodeColor(n) : DIM_NODE_3D;
+          })
+          .linkColor((l) => {
+            const f = effectiveFocus();
+            return !f || linkInFocus(l, f)
+              ? EDGE_COLORS[bundleDominant(l)] || "#6e7691"
+              : DIM_LINK_3D;
+          });
+        // Labels: all visible by default; with a focus, only the
+        // neighborhood's labels stay so the selection reads clearly.
+        const set = focusNodeSet();
+        sprites3d.forEach((sprite, id) => {
+          sprite.visible = set ? set.has(id) : true;
+        });
+      }
+
+      // ---- visibility (type toggles + weight threshold) ------------------------------
+      function applyVisibility() {
+        if (mode === "2d") applyVisibility2D();
+        applyVisibility3D();
+      }
+
+      // Flip node/edge visibility for the current filters without touching the
+      // running simulation — positions stay put. Bundle visuals (width, color,
+      // dash) depend on which records pass the filters, so they refresh here too.
+      function applyVisibility2D() {
+        if (!nodeGroup) return;
+        const { edges } = weekData();
+        const ids = visibleNodeIds(edges);
+        nodeGroup
+          .selectAll("g.node")
+          .style("display", (d) =>
+            activeTypes.has(nodeType(d)) && ids.has(d.id) ? null : "none",
+          );
+        linkGroup
+          .selectAll("path.link")
+          .style("display", (d) =>
+            bundleVisibleMembers(d).length ? null : "none",
+          )
+          .attr("stroke", (d) => EDGE_COLORS[bundleDominant(d)] || "#6e7691")
+          .attr("stroke-width", (d) => wScale2D(bundleWeight(d)))
+          .attr(
+            "stroke-dasharray",
+            (d) => EDGE_DASH[bundleDominant(d)] || null,
+          )
+          // confidence → opacity (range in the data is ~0.75–0.95)
+          .attr("stroke-opacity", (d) =>
+            Math.max(
+              0.45,
+              Math.min(0.9, 0.4 + (bundleConfidence(d) - 0.7) * 1.8),
+            ),
+          )
+          .attr("marker-end", (d) => `url(#arrow-${bundleDominant(d)})`);
+        hitGroup
+          .selectAll("path.link-hit")
+          .style("display", (d) =>
+            bundleVisibleMembers(d).length ? null : "none",
+          )
+          .attr("stroke-width", (d) =>
+            Math.max(14, wScale2D(bundleWeight(d)) + 9),
+          );
+      }
+
+      // Re-applying the visibility accessors refreshes hidden/shown objects without
+      // re-feeding graphData, so the 3D layout keeps its exact positions.
+      function applyVisibility3D() {
+        if (!graph3d) return;
+        const { edges } = weekData();
+        const ids = visibleNodeIds(edges);
+        graph3d
+          .nodeVisibility((n) => activeTypes.has(nodeType(n)) && ids.has(n.id))
+          .linkVisibility((l) => bundleVisibleMembers(l).length > 0)
+          // width, particle density and dominant-relation color also depend
+          // on the filters
+          .linkWidth((l) => 0.5 + (bundleWeight(l) / wMax3d) * 3.4)
+          .linkDirectionalParticles((l) =>
+            bundleDominant(l) === "SUPPLIES"
+              ? 1 + Math.round((bundleWeight(l) / wMax3d) * 3)
+              : 0,
+          );
+        applyFocus3D();
+      }
+
       function renderActive() {
         if (mode === "2d") render2D();
         else render3D();
+        updateStats();
       }
 
       function setMode(m) {
         if (m === mode) return;
         mode = m;
-        document
-          .getElementById("btn-2d")
-          .classList.toggle("active", m === "2d");
-        document
-          .getElementById("btn-3d")
-          .classList.toggle("active", m === "3d");
+        clearFocus();
+        document.getElementById("btn-2d").classList.toggle("active", m === "2d");
+        document.getElementById("btn-3d").classList.toggle("active", m === "3d");
         document.getElementById("svg-container").style.display =
           m === "2d" ? "block" : "none";
         document.getElementById("graph-3d").style.display =
           m === "3d" ? "block" : "none";
         document.getElementById("hint-3d").style.display =
           m === "3d" ? "block" : "none";
+        document.getElementById("hint-2d").style.display =
+          m === "2d" ? "block" : "none";
         if (m === "2d" && simulation) simulation.alphaTarget(0).restart();
         renderActive();
       }
 
+      // ---- tooltip ------------------------------------------------------------------
+      const tooltip = document.getElementById("tooltip");
+      function showTooltip(ev, html) {
+        const rect = document
+          .getElementById("graph-container")
+          .getBoundingClientRect();
+        tooltip.innerHTML = html;
+        tooltip.style.display = "block";
+        let x = ev.clientX - rect.left + 14;
+        let y = ev.clientY - rect.top + 10;
+        if (x + 290 > rect.width) x = ev.clientX - rect.left - 296;
+        if (y + tooltip.offsetHeight > rect.height - 8)
+          y = rect.height - tooltip.offsetHeight - 8;
+        tooltip.style.left = x + "px";
+        tooltip.style.top = y + "px";
+      }
+      function hideTooltip() {
+        tooltip.style.display = "none";
+      }
+
+      const nodeTooltip = (d) => {
+        const deg = currentEdgesPlain.filter(
+          (e) => e.source === d.id || e.target === d.id,
+        ).length;
+        return `<b>${esc(d.label)}</b><br>${NODE_TYPE_LABELS[nodeType(d)]} · ${d.mention_count} mentions · ${deg} links`;
+      };
+      const edgeTooltip = (b) => {
+        const s = linkId(b.source),
+          t = linkId(b.target);
+        const vis = bundleVisibleMembers(b);
+        const counts = {};
+        vis.forEach(
+          (m) => (counts[m.relation_type] = (counts[m.relation_type] || 0) + 1),
+        );
+        const rels = Object.entries(counts)
+          .map(
+            ([r, c]) =>
+              `<span style="color:${EDGE_COLORS[r]}">${r}</span>${c > 1 ? ` ×${c}` : ""}`,
+          )
+          .join(" · ");
+        const flows = [
+          ...new Set(vis.map((m) => m.what_flows).filter(Boolean)),
+        ].slice(0, 3);
+        return (
+          `<b>${esc(s)} → ${esc(t)}</b><br>` +
+          `${vis.length} record${vis.length > 1 ? "s" : ""} · ${rels}` +
+          (flows.length ? `<br>${esc(flows.join(", "))}` : "")
+        );
+      };
+
       // ---- 2D (D3 SVG) ------------------------------------------------------------
       function render2D() {
         const { nodes: filtered_nodes, edges: filtered_edges } = weekData();
-
-        const nodeMap = {};
-        filtered_nodes.forEach((n) => {
-          nodeMap[n.id] = { ...n };
-        });
+        currentEdgesPlain = filtered_edges;
+        userInteracted2D = false; // fresh layout → auto-fit again
 
         const simNodes = filtered_nodes.map((n) => ({ ...n }));
-        const simLinks = filtered_edges.map((e) => ({
-          ...e,
-          source: e.source,
-          target: e.target,
-        }));
+        // one link per direction; d3 mutates source/target on these, members
+        // stay plain (string endpoints)
+        const simLinks = buildBundles(filtered_edges);
+        simNodesById = new Map(simNodes.map((n) => [n.id, n]));
 
         const mcMax = d3.max(simNodes, (d) => d.mention_count) || 1;
-        const rScale = d3.scaleSqrt().domain([0, mcMax]).range([16, 62]);
-        const wMax = d3.max(simLinks, (d) => d.weight) || 1;
-        const wScale = d3.scaleLinear().domain([0, wMax]).range([1.5, 8]);
+        const rScale = d3.scaleSqrt().domain([0, mcMax]).range([14, 54]);
+        simNodes.forEach((n) => (n.__r = rScale(n.mention_count)));
+        wScale2D = d3
+          .scaleSqrt()
+          .domain([0, d3.max(simLinks, bundleTotalWeight) || 1])
+          .range([1.8, 10]);
+
+        // When both directions exist (A→B and B→A), bend each slightly to the
+        // left of its travel direction so the two arcs mirror apart.
+        const dirKeys = new Set(simLinks.map((l) => l.source + "→" + l.target));
+        simLinks.forEach((l) => {
+          l.__curv =
+            l.source !== l.target && dirKeys.has(l.target + "→" + l.source)
+              ? 0.14
+              : 0;
+        });
 
         linkGroup.selectAll("*").remove();
+        hitGroup.selectAll("*").remove();
         nodeGroup.selectAll("*").remove();
 
         const cx = document.getElementById("graph-container").clientWidth / 2;
@@ -558,19 +1479,12 @@
             d3
               .forceLink(simLinks)
               .id((d) => d.id)
-              .distance(
-                (d) =>
-                  60 +
-                  rScale(d.source.mention_count || 1) +
-                  rScale(d.target.mention_count || 1),
-              ),
+              .distance((d) => 60 + d.source.__r + d.target.__r),
           )
           // strong repulsion keeps the big cluster nicely spread; bigger nodes push harder
           .force(
             "charge",
-            d3
-              .forceManyBody()
-              .strength((d) => -700 - rScale(d.mention_count) * 14),
+            d3.forceManyBody().strength((d) => -700 - d.__r * 14),
           )
           .force("center", d3.forceCenter(cx, cy))
           // per-node spring toward center: stops detached small groups drifting off,
@@ -582,20 +1496,86 @@
             "collision",
             d3
               .forceCollide()
-              .radius((d) => rScale(d.mention_count) * 1.25 + 14)
+              .radius((d) => d.__r * 1.25 + 14)
               .strength(1),
           );
 
+        // Path with endpoints trimmed to the node circles so arrowheads land
+        // on the rim, plus a self-loop shape for A→A edges.
+        function linkPath(d) {
+          const s = d.source,
+            t = d.target;
+          if (s === t || s.id === t.id) {
+            const r = s.__r;
+            return `M ${s.x} ${s.y - r + 2}
+                    C ${s.x - r * 1.9} ${s.y - r * 2.8},
+                      ${s.x + r * 1.9} ${s.y - r * 2.8},
+                      ${s.x + 2} ${s.y - r}`;
+          }
+          const dx = t.x - s.x,
+            dy = t.y - s.y,
+            dist = Math.hypot(dx, dy) || 1;
+          const nx = -dy / dist,
+            ny = dx / dist;
+          const off = (d.__curv || 0) * dist;
+          const mx = (s.x + t.x) / 2 + nx * off;
+          const my = (s.y + t.y) / 2 + ny * off;
+          // trim toward the control point (≈ tangent direction at each end)
+          const trim = (px, py, cxp, cyp, r) => {
+            const vx = cxp - px,
+              vy = cyp - py,
+              vl = Math.hypot(vx, vy) || 1;
+            return [px + (vx / vl) * r, py + (vy / vl) * r];
+          };
+          const [sx, sy] = trim(s.x, s.y, mx, my, s.__r + 2);
+          const [tx, ty] = trim(t.x, t.y, mx, my, t.__r + 5);
+          return `M ${sx} ${sy} Q ${mx} ${my} ${tx} ${ty}`;
+        }
+
         const link = linkGroup
-          .selectAll("line")
+          .selectAll("path")
           .data(simLinks)
-          .join("line")
-          .attr("class", "link")
-          .attr("stroke", (d) => EDGE_COLORS[d.relation_type] || "#6a6a8a")
-          .attr("stroke-width", (d) => wScale(d.weight))
-          .attr("marker-end", (d) => `url(#arrow-${d.relation_type})`)
-          .on("click", (event, d) => showEdgeDetail(d))
-          .style("cursor", "pointer");
+          .join("path")
+          .attr("class", "link");
+        // visual attrs (color/width/dash/opacity) are filter-dependent →
+        // applied in applyVisibility2D
+
+        const hit = hitGroup
+          .selectAll("path")
+          .data(simLinks)
+          .join("path")
+          .attr("class", "link-hit")
+          .on("click", (ev, d) => {
+            ev.stopPropagation();
+            focus = {
+              kind: "edge",
+              ref: d,
+              srcId: linkId(d.source),
+              tgtId: linkId(d.target),
+            };
+            hoverFocus = null;
+            showEdgeDetail(d);
+            applyFocus();
+          })
+          .on("mousemove", (ev, d) => showTooltip(ev, edgeTooltip(d)))
+          .on("mouseover", (ev, d) => {
+            if (!focus) {
+              hoverFocus = {
+                kind: "edge",
+                ref: d,
+                srcId: linkId(d.source),
+                tgtId: linkId(d.target),
+              };
+              applyFocus2D();
+            }
+          })
+          .on("mouseout", () => {
+            hideTooltip();
+            if (hoverFocus) {
+              hoverFocus = null;
+              applyFocus2D();
+            }
+          });
 
         const node = nodeGroup
           .selectAll("g.node")
@@ -606,6 +1586,7 @@
             d3
               .drag()
               .on("start", (ev, d) => {
+                userInteracted2D = true;
                 if (!ev.active) simulation.alphaTarget(0.3).restart();
                 d.fx = d.x;
                 d.fy = d.y;
@@ -614,71 +1595,91 @@
                 d.fx = ev.x;
                 d.fy = ev.y;
               })
-              .on("end", (ev, d) => {
+              .on("end", (ev) => {
+                // node stays pinned where it was dropped; double-click frees it
                 if (!ev.active) simulation.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
               }),
           )
-          .on("click", (event, d) => showNodeDetail(d, filtered_edges));
+          .on("click", (ev, d) => {
+            ev.stopPropagation();
+            focus = { kind: "node", id: d.id };
+            hoverFocus = null;
+            showNodeDetail(d, filtered_edges);
+            applyFocus();
+          })
+          .on("dblclick", (ev, d) => {
+            ev.stopPropagation();
+            d.fx = null;
+            d.fy = null;
+            simulation.alpha(0.25).restart();
+          })
+          .on("mousemove", (ev, d) => showTooltip(ev, nodeTooltip(d)))
+          .on("mouseover", (ev, d) => {
+            if (!focus) {
+              hoverFocus = { kind: "node", id: d.id };
+              applyFocus2D();
+            }
+          })
+          .on("mouseout", () => {
+            hideTooltip();
+            if (hoverFocus) {
+              hoverFocus = null;
+              applyFocus2D();
+            }
+          });
 
         node
           .append("circle")
-          .attr("r", (d) => rScale(d.mention_count))
-          .attr("fill", (d) => nodeColor2D(d))
-          .attr("stroke", NODE_STROKE);
+          .attr("r", (d) => d.__r)
+          .attr("fill", (d) => nodeColor(d));
 
         node
           .append("text")
           .attr("dy", "0.35em")
           .style(
             "font-size",
-            (d) =>
-              Math.max(11, Math.min(rScale(d.mention_count) * 0.55, 22)) + "px",
+            (d) => Math.max(10, Math.min(d.__r * 0.55, 20)) + "px",
           )
           .text((d) => d.label);
 
-        simulation.on("tick", () => {
-          link
-            .attr("x1", (d) => d.source.x)
-            .attr("y1", (d) => d.source.y)
-            .attr("x2", (d) => d.target.x)
-            .attr("y2", (d) => d.target.y);
+        const updatePositions = () => {
+          link.attr("d", linkPath);
+          hit.attr("d", linkPath);
           node.attr("transform", (d) => `translate(${d.x},${d.y})`);
+        };
+
+        let tickCount = 0;
+        simulation.on("tick", () => {
+          tickCount++;
+          updatePositions();
+          // keep everything in view while the layout settles, until the user
+          // takes over the camera
+          if (!userInteracted2D && tickCount % 25 === 0) fitGraph2D(false);
+        });
+        simulation.on("end", () => {
+          if (!userInteracted2D) fitGraph2D(true);
         });
 
-        applyTypeVisibility2D();
-      }
+        // Settle most of the layout synchronously so the graph appears in
+        // place instead of flying around, then run a short animated tail.
+        simulation.stop();
+        simulation.tick(160);
+        updatePositions();
+        fitGraph2D(false);
+        simulation.alpha(0.06).restart();
 
-      // Flip node/edge visibility for the current type filter, without touching
-      // the running simulation — positions stay put.
-      function applyTypeVisibility2D() {
-        nodeGroup
-          .selectAll("g.node")
-          .style("display", (d) =>
-            activeTypes.has(nodeType(d)) ? null : "none",
-          );
-        linkGroup
-          .selectAll("line")
-          .style("display", (d) => (edgeVisible(d) ? null : "none"));
-      }
-
-      // Re-applying the visibility accessors refreshes hidden/shown nodes without
-      // re-feeding graphData, so the 3D layout keeps its exact positions.
-      function applyTypeVisibility3D() {
-        if (!graph3d) return;
-        graph3d
-          .nodeVisibility((n) => activeTypes.has(nodeType(n)))
-          .linkVisibility((l) => edgeVisible(l));
+        applyVisibility2D();
+        applyFocus2D();
       }
 
       // ---- 3D (3d-force-graph / WebGL) --------------------------------------------
+      const NODE_REL_SIZE_3D = 5.5;
       function node3dRadius(n, mcMax) {
-        // matches nodeRelSize(4) * cbrt(nodeVal); keep in sync with nodeVal below
-        return 4 * Math.cbrt(nodeVal3d(n, mcMax));
+        // matches nodeRelSize * cbrt(nodeVal); keep in sync with nodeVal below
+        return NODE_REL_SIZE_3D * Math.cbrt(nodeVal3d(n, mcMax));
       }
       function nodeVal3d(n, mcMax) {
-        return (n.mention_count / mcMax) * 22 + 1.5;
+        return (n.mention_count / mcMax) * 26 + 4;
       }
 
       function makeLabel(n, mcMax) {
@@ -692,6 +1693,7 @@
           sprite.padding = 2;
           sprite.borderRadius = 3;
           sprite.position.set(0, node3dRadius(n, mcMax) + sprite.textHeight, 0);
+          sprites3d.set(n.id, sprite);
           return sprite;
         } catch (e) {
           console.warn("label sprite failed", e);
@@ -702,7 +1704,7 @@
       function show3dError(msg) {
         document.getElementById("graph-3d").innerHTML =
           `<div style="position:absolute;inset:0;display:flex;align-items:center;
-      justify-content:center;padding:32px;text-align:center;color:#e05a7a;
+      justify-content:center;padding:32px;text-align:center;color:#e66767;
       font-size:13px;line-height:1.6">${msg}</div>`;
       }
 
@@ -719,56 +1721,155 @@
         }
 
         const { nodes: filtered_nodes, edges: filtered_edges } = weekData();
+        currentEdgesPlain = filtered_edges;
 
-        const mcMax = Math.max(
-          1,
-          ...filtered_nodes.map((n) => n.mention_count),
-        );
-        const wMax = Math.max(0.0001, ...filtered_edges.map((e) => e.weight));
+        const mcMax = Math.max(1, ...filtered_nodes.map((n) => n.mention_count));
 
-        // fresh copies — 3d-force-graph mutates node/link objects
+        // fresh copies — 3d-force-graph mutates node/link objects; bundles are
+        // rebuilt per render so mutation is fine, members stay plain
         const nodes = filtered_nodes.map((n) => ({ ...n }));
-        const links = filtered_edges.map((e) => ({ ...e }));
+        const links = buildBundles(filtered_edges);
+        wMax3d = Math.max(0.0001, ...links.map(bundleTotalWeight));
+        nodes3dById = new Map(nodes.map((n) => [n.id, n]));
+
+        sprites3d.clear();
+
+        // mirror-arc bidirectional pairs, loop self-links (must be curved to
+        // render at all in 3D)
+        const dirKeys = new Set(links.map((l) => l.source + "→" + l.target));
+        links.forEach((l) => {
+          l.__curv =
+            l.source === l.target
+              ? 0.6
+              : dirKeys.has(l.target + "→" + l.source)
+                ? 0.22
+                : 0;
+        });
 
         if (!graph3d) {
           try {
-            graph3d = ForceGraph3D()(document.getElementById("graph-3d"))
+            graph3d = ForceGraph3D({ controlType: "orbit" })(
+              document.getElementById("graph-3d"),
+            )
               .backgroundColor("#0f1117")
               .showNavInfo(false)
-              .nodeRelSize(4)
-              .nodeColor((n) => nodeColor3D(n))
+              .nodeRelSize(NODE_REL_SIZE_3D)
+              .nodeColor((n) => nodeColor(n))
               .nodeVisibility((n) => activeTypes.has(nodeType(n)))
-              .linkVisibility((l) => edgeVisible(l))
+              .linkVisibility((l) => bundleVisibleMembers(l).length > 0)
               .nodeOpacity(0.92)
               .nodeVal((n) => nodeVal3d(n, mcMax))
-              .nodeLabel(
-                (n) => `<b>${n.label}</b> · ${n.mention_count} mentions`,
-              )
+              .nodeLabel((n) => `<b>${esc(n.label)}</b> · ${n.mention_count} mentions`)
               .nodeThreeObjectExtend(true)
               .nodeThreeObject((n) => makeLabel(n, mcMax))
-              .linkColor((l) => EDGE_COLORS[l.relation_type] || "#6a6a8a")
+              .linkColor((l) => EDGE_COLORS[bundleDominant(l)] || "#6e7691")
               .linkOpacity(0.55)
-              .linkWidth((l) => 0.4 + (l.weight / wMax) * 2.2)
-              .linkDirectionalArrowLength(3.5)
+              .linkWidth((l) => 0.5 + (bundleWeight(l) / wMax3d) * 3.4)
+              .linkCurvature((l) => l.__curv || 0)
+              .linkLabel((l) => edgeTooltip(l))
+              .linkDirectionalArrowLength(4)
               .linkDirectionalArrowRelPos(1)
+              // particle stream = supply flow; denser on heavier links
               .linkDirectionalParticles((l) =>
-                l.relation_type === "SUPPLIES" ? 2 : 0,
+                bundleDominant(l) === "SUPPLIES"
+                  ? 1 + Math.round((bundleWeight(l) / wMax3d) * 3)
+                  : 0,
               )
-              .linkDirectionalParticleWidth(1.6)
+              .linkDirectionalParticleWidth(1.8)
               .linkDirectionalParticleSpeed(0.01)
-              .onNodeClick((n) => showNodeDetail(n, currentEdgesPlain))
-              .onLinkClick((l) => showEdgeDetail(l))
-              .onBackgroundClick(() => {});
-            graph3d.d3Force("charge").strength(-240);
+              .onNodeClick((n) => {
+                focus = { kind: "node", id: n.id };
+                hoverFocus = null;
+                showNodeDetail(n, currentEdgesPlain);
+                applyFocus();
+              })
+              .onLinkClick((l) => {
+                focus = {
+                  kind: "edge",
+                  ref: l,
+                  srcId: linkId(l.source),
+                  tgtId: linkId(l.target),
+                };
+                hoverFocus = null;
+                showEdgeDetail(l);
+                applyFocus();
+              })
+              // hover previews the neighborhood, exactly like 2D
+              .onNodeHover((n) => {
+                if (focus) return;
+                hoverFocus = n ? { kind: "node", id: n.id } : null;
+                applyFocus3D();
+              })
+              .onLinkHover((l) => {
+                if (focus) return;
+                hoverFocus = l
+                  ? {
+                      kind: "edge",
+                      ref: l,
+                      srcId: linkId(l.source),
+                      tgtId: linkId(l.target),
+                    }
+                  : null;
+                applyFocus3D();
+              })
+              // drag pins a node in space; right-click frees it
+              .onNodeDragEnd((n) => {
+                n.fx = n.x;
+                n.fy = n.y;
+                n.fz = n.z;
+              })
+              .onNodeRightClick((n) => {
+                n.fx = n.fy = n.fz = undefined;
+                graph3d.d3ReheatSimulation();
+              })
+              .onBackgroundClick(() => clearFocus());
+            // repulsion sets node spacing; the gentle 3-axis pull toward the
+            // origin keeps small disconnected clusters near the main
+            // structure instead of drifting off into space
+            graph3d.d3Force("charge").strength(-230);
+            const centerPull = (strength) => {
+              let ns;
+              const f = (alpha) => {
+                ns.forEach((n) => {
+                  n.vx -= n.x * strength * alpha;
+                  n.vy -= n.y * strength * alpha;
+                  n.vz -= (n.z || 0) * strength * alpha;
+                });
+              };
+              f.initialize = (arr) => (ns = arr);
+              return f;
+            };
+            graph3d.d3Force("centerPull", centerPull(0.06));
+
+            // gentle auto-orbit until the user takes the camera; the same
+            // gesture also ends auto-fit
+            try {
+              const controls = graph3d.controls();
+              controls.autoRotate = true;
+              controls.autoRotateSpeed = 0.55;
+              document
+                .getElementById("graph-3d")
+                .addEventListener("pointerdown", () => {
+                  userInteracted3D = true;
+                  controls.autoRotate = false;
+                });
+            } catch (e) {}
+            // keep the settling layout in frame (engine stops → final frame)
+            graph3d.onEngineStop(() => {
+              if (!userInteracted3D) {
+                try {
+                  graph3d.zoomToFit(600, 60);
+                } catch (e) {}
+              }
+            });
             graph3d
               .d3Force("link")
               .distance(
                 (l) =>
-                  40 +
+                  62 +
                   node3dRadius(l.source, mcMax) +
                   node3dRadius(l.target, mcMax),
               );
-            built3dOnce = true;
           } catch (e) {
             graph3d = null;
             show3dError(
@@ -782,32 +1883,35 @@
           // scales may change with filter — refresh accessors
           graph3d
             .nodeVal((n) => nodeVal3d(n, mcMax))
-            .linkWidth((l) => 0.4 + (l.weight / wMax) * 2.2)
+            .linkWidth((l) => 0.5 + (bundleWeight(l) / wMax3d) * 3.4)
             .nodeThreeObject((n) => makeLabel(n, mcMax));
         }
 
-        // detail panel for 3D clicks needs plain (string source/target) edges
-        currentEdgesPlain = filtered_edges;
         try {
           graph3d.graphData({ nodes, links });
         } catch (e) {
-          show3dError(
-            "3D render failed:<br>" + (e && e.message ? e.message : e),
-          );
+          show3dError("3D render failed:<br>" + (e && e.message ? e.message : e));
           return;
         }
+        applyVisibility3D();
+        applyFocus3D();
 
-        // size to container + auto-frame so the graph is always in view
+        // size to container + auto-frame so the graph is always in view;
+        // periodic refits keep up with the expanding layout until the user
+        // takes the camera (or the engine stops → onEngineStop refit)
         const c = document.getElementById("graph-3d");
         graph3d.width(c.clientWidth).height(c.clientHeight);
-        setTimeout(() => {
-          try {
-            graph3d.zoomToFit(600, 60);
-          } catch (e) {}
-        }, 500);
+        userInteracted3D = false;
+        [500, 1500, 3000, 5000].forEach((ms) =>
+          setTimeout(() => {
+            if (!userInteracted3D) {
+              try {
+                graph3d.zoomToFit(400, 60);
+              } catch (e) {}
+            }
+          }, ms),
+        );
       }
-
-      let currentEdgesPlain = [];
 
       window.addEventListener("resize", () => {
         if (graph3d && mode === "3d") {
@@ -817,72 +1921,115 @@
       });
 
       // ---- shared inspector -------------------------------------------------------
+      function connRow(e, partnerId, dir) {
+        const c = EDGE_COLORS[e.relation_type] || "#888";
+        return `<div class="conn">
+          <div class="head">
+            <span class="dir">${dir}</span>
+            <span class="partner" onclick="focusEntity('${esc(partnerId).replace(/'/g, "\\'")}')">${esc(partnerId)}</span>
+            <span class="edge-pill" style="background:${c}22;color:${c}">${e.relation_type}</span>
+            <span class="date">${e.date}</span>
+          </div>
+          ${
+            e.what_flows || e.quantity != null
+              ? `<div class="sub">${esc(e.what_flows || "")}${
+                  e.quantity != null
+                    ? ` — ${e.quantity} ${esc(e.unit || "")}`
+                    : ""
+                }</div>`
+              : ""
+          }
+        </div>`;
+      }
+
       function showNodeDetail(d, edges) {
-        const outEdges = edges.filter((e) => e.source === d.id);
-        const inEdges = edges.filter((e) => e.target === d.id);
+        const t = nodeType(d);
+        const outEdges = edges
+          .filter((e) => e.source === d.id && e.target !== d.id)
+          .sort((a, b) => b.weight - a.weight);
+        const inEdges = edges
+          .filter((e) => e.target === d.id && e.source !== d.id)
+          .sort((a, b) => b.weight - a.weight);
+        const selfEdges = edges.filter(
+          (e) => e.source === d.id && e.target === d.id,
+        );
+        const tc = NODE_TYPE_COLORS[t];
+
         let html = `
     <div class="detail-section">
-      <h3>Node</h3>
-      <div class="kv"><span class="k">ID</span><span class="v">${d.id}</span></div>
-      <div class="kv"><span class="k">Mentions</span><span class="v">${d.mention_count}</span></div>
+      <div class="node-title">${esc(d.label)}</div>
+      <span class="badge" style="background:${tc}22;color:${tc}">${NODE_TYPE_LABELS[t]}</span>
+      <div style="margin-top:8px">
+        <div class="kv"><span class="k">Mentions</span><span class="v">${d.mention_count}</span></div>
+        <div class="kv"><span class="k">Connections</span><span class="v">${outEdges.length} out · ${inEdges.length} in${selfEdges.length ? ` · ${selfEdges.length} self` : ""}</span></div>
+        <div class="kv"><span class="k">Σ weight</span><span class="v">${outEdges.reduce((s, e) => s + e.weight, 0).toFixed(2)} out · ${inEdges.reduce((s, e) => s + e.weight, 0).toFixed(2)} in</span></div>
+      </div>
+      ${
+        isolateId === d.id
+          ? ""
+          : `<button class="hub-chip" style="margin-top:8px" onclick="isolateEntity('${esc(d.id).replace(/'/g, "\\'")}')">⊙ Isolate neighborhood</button>`
+      }
     </div>`;
 
         if (outEdges.length) {
           html += `<div class="detail-section"><h3>Outgoing (${outEdges.length})</h3>`;
-          outEdges.forEach((e) => {
-            const c = EDGE_COLORS[e.relation_type] || "#888";
-            html += `<div style="margin-bottom:8px">
-        <span class="edge-pill" style="background:${c}22;color:${c}">${e.relation_type}</span>
-        <div class="kv"><span class="k">→</span><span class="v">${e.target}</span></div>
-        ${e.what_flows ? `<div class="kv"><span class="k">flows</span><span class="v">${e.what_flows}</span></div>` : ""}
-        ${e.quantity != null ? `<div class="kv"><span class="k">qty</span><span class="v">${e.quantity} ${e.unit || ""}</span></div>` : ""}
-        <div class="kv"><span class="k">date</span><span class="v">${e.date}</span></div>
-        ${e.evidence ? `<div class="evidence-box">${e.evidence}</div>` : ""}
-      </div>`;
-          });
+          outEdges.forEach((e) => (html += connRow(e, e.target, "→")));
           html += "</div>";
         }
-
         if (inEdges.length) {
           html += `<div class="detail-section"><h3>Incoming (${inEdges.length})</h3>`;
-          inEdges.forEach((e) => {
-            const c = EDGE_COLORS[e.relation_type] || "#888";
-            html += `<div style="margin-bottom:8px">
-        <span class="edge-pill" style="background:${c}22;color:${c}">${e.relation_type}</span>
-        <div class="kv"><span class="k">←</span><span class="v">${e.source}</span></div>
-        ${e.what_flows ? `<div class="kv"><span class="k">flows</span><span class="v">${e.what_flows}</span></div>` : ""}
-        ${e.quantity != null ? `<div class="kv"><span class="k">qty</span><span class="v">${e.quantity} ${e.unit || ""}</span></div>` : ""}
-        <div class="kv"><span class="k">date</span><span class="v">${e.date}</span></div>
-      </div>`;
-          });
+          inEdges.forEach((e) => (html += connRow(e, e.source, "←")));
           html += "</div>";
         }
 
         document.getElementById("detail").innerHTML = html;
       }
 
-      function showEdgeDetail(d) {
+      // b is a bundle — one card per underlying record, newest first.
+      function showEdgeDetail(b) {
         // 3d-force-graph replaces source/target with node objects — normalize
-        const srcId = typeof d.source === "object" ? d.source.id : d.source;
-        const tgtId = typeof d.target === "object" ? d.target.id : d.target;
-        const c = EDGE_COLORS[d.relation_type] || "#888";
-        const chunks = (d.source_chunk_ids || []).join("<br>");
-        document.getElementById("detail").innerHTML = `
+        const srcId = linkId(b.source);
+        const tgtId = linkId(b.target);
+        const members = [...b.members].sort(
+          (x, y) => y.date.localeCompare(x.date) || y.weight - x.weight,
+        );
+        const totalW = members.reduce((s, m) => s + m.weight, 0);
+
+        let html = `
     <div class="detail-section">
-      <h3>Edge</h3>
-      <span class="edge-pill" style="background:${c}22;color:${c}">${d.relation_type}</span>
-      <div class="kv"><span class="k">source</span><span class="v">${srcId}</span></div>
-      <div class="kv"><span class="k">target</span><span class="v">${tgtId}</span></div>
-      ${d.what_flows ? `<div class="kv"><span class="k">what_flows</span><span class="v">${d.what_flows}</span></div>` : ""}
-      ${d.quantity != null ? `<div class="kv"><span class="k">quantity</span><span class="v">${d.quantity} ${d.unit || ""}</span></div>` : ""}
-      <div class="kv"><span class="k">date</span><span class="v">${d.date}</span></div>
-      <div class="kv"><span class="k">weight</span><span class="v">${d.weight}</span></div>
-      <div class="kv"><span class="k">confidence</span><span class="v">${d.confidence}</span></div>
-      <div class="kv"><span class="k">mentions</span><span class="v">${d.mention_count}</span></div>
+      <div class="node-title" style="font-size:14px">
+        <span class="partner" onclick="focusEntity('${esc(srcId).replace(/'/g, "\\'")}')">${esc(srcId)}</span>
+        <span style="color:var(--ink-muted)"> → </span>
+        <span class="partner" onclick="focusEntity('${esc(tgtId).replace(/'/g, "\\'")}')">${esc(tgtId)}</span>
+      </div>
+      <div class="kv" style="margin-top:6px"><span class="k">records</span><span class="v">${members.length}</span></div>
+      <div class="kv"><span class="k">combined weight</span><span class="v">${totalW.toFixed(3)}</span></div>
     </div>
-    ${d.evidence ? `<div class="detail-section"><h3>Evidence</h3><div class="evidence-box">${d.evidence}</div></div>` : ""}
-    ${chunks ? `<div class="detail-section"><h3>Source chunks</h3><div class="kv"><span class="v" style="font-size:10px;color:#6070a0">${chunks}</span></div></div>` : ""}
-  `;
+    <div class="detail-section"><h3>Records (${members.length})</h3>`;
+
+        members.forEach((m) => {
+          const c = EDGE_COLORS[m.relation_type] || "#888";
+          html += `<div class="conn">
+        <div class="head">
+          <span class="edge-pill" style="background:${c}22;color:${c}">${m.relation_type}</span>
+          <span class="date">${m.date}</span>
+        </div>
+        ${
+          m.what_flows || m.quantity != null
+            ? `<div class="sub">${esc(m.what_flows || "")}${
+                m.quantity != null
+                  ? ` — ${m.quantity} ${esc(m.unit || "")}`
+                  : ""
+              }</div>`
+            : ""
+        }
+        <div class="sub" style="color:var(--ink-muted)">weight ${m.weight} · confidence ${m.confidence} · ${m.mention_count} mention${m.mention_count > 1 ? "s" : ""}</div>
+        ${m.evidence ? `<div class="evidence-box">${esc(m.evidence)}</div>` : ""}
+      </div>`;
+        });
+        html += "</div>";
+
+        document.getElementById("detail").innerHTML = html;
       }
     </script>
   </body>
