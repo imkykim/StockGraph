@@ -462,6 +462,26 @@
         letter-spacing: 1px;
         margin-bottom: 8px;
       }
+      #legend h3.legend-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      #scheme-select {
+        background: var(--panel-2);
+        color: var(--ink);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 3px 6px;
+        font-size: 10.5px;
+        text-transform: none;
+        letter-spacing: normal;
+        cursor: pointer;
+      }
+      #scheme-select:hover {
+        border-color: var(--accent);
+      }
       #guide summary {
         font-size: 10.5px;
         color: var(--ink-muted);
@@ -641,7 +661,13 @@
           </p>
         </div>
         <div id="legend">
-          <h3>Node types</h3>
+          <h3 class="legend-head">
+            Nodes · color by
+            <select id="scheme-select" title="Company sub-classification">
+              <option value="role">Value-chain role</option>
+              <option value="industry">Industry</option>
+            </select>
+          </h3>
           <div id="node-type-filter"></div>
           <h3 style="margin-top: 12px">Relation types</h3>
           <div id="rel-type-filter"></div>
@@ -651,6 +677,13 @@
               <p>
                 <b>Circle size</b> — how often the entity is mentioned in the
                 reports.
+              </p>
+              <p>
+                <b>Circle color</b> — company classification, switchable above.
+                <i>Value-chain role</i> is derived from supply-edge directions
+                across all weeks (mostly supplies → upstream; mostly buys →
+                downstream; both → integrator; neither → peripheral).
+                <i>Industry</i> is a curated GICS-style bucket.
               </p>
               <p>
                 <b>Line width</b> — combined <b>weight</b> of every record
@@ -716,23 +749,151 @@
         COMPETES_WITH: "7 5",
         CO_MENTION: "2 5",
       };
-      const NODE_TYPE_COLORS = {
-        COMPANY: "#3987e5",
-        SECTOR: "#c98500",
-        REGION: "#d55181",
-        INSTITUTION: "#008300",
+      // ---- node color schemes -------------------------------------------------------
+      // Companies are sub-classified two ways; the Color-by select switches scheme.
+      // "role" is derived from edge directions at load time (see computeRoles);
+      // "industry" is a curated GICS-flavored mapping (unknown → OTHER).
+      // Palette slots validated (dataviz six checks) against --surface #0f1117;
+      // PERIPHERAL/OTHER are deliberately gray so they recede.
+      const SCHEME_DEFS = {
+        role: {
+          colors: {
+            UPSTREAM: "#199e70",
+            INTEGRATOR: "#3987e5",
+            DOWNSTREAM: "#c98500",
+            PERIPHERAL: "#6e7691",
+            SECTOR: "#9085e9",
+            REGION: "#d55181",
+            INSTITUTION: "#008300",
+          },
+          labels: {
+            UPSTREAM: "Upstream · supplier",
+            INTEGRATOR: "Integrator · mid-chain",
+            DOWNSTREAM: "Downstream · buyer",
+            PERIPHERAL: "Peripheral · no supply ties",
+            SECTOR: "Sector / product",
+            REGION: "Region",
+            INSTITUTION: "Institution",
+          },
+          of: (n) =>
+            rawType(n) === "COMPANY"
+              ? roleById.get(n.id) || "PERIPHERAL"
+              : rawType(n),
+        },
+        industry: {
+          colors: {
+            SEMI: "#3987e5",
+            EQUIP: "#199e70",
+            HARDWARE: "#c98500",
+            COMMS: "#9085e9",
+            INTERNET: "#d55181",
+            FINANCIAL: "#d95926",
+            OTHER: "#6e7691",
+          },
+          labels: {
+            SEMI: "Semiconductors",
+            EQUIP: "Equipment · materials · PCB",
+            HARDWARE: "Devices & OEM",
+            COMMS: "Optical & networking",
+            INTERNET: "Internet · software · AI",
+            FINANCIAL: "Financials",
+            OTHER: "Other / non-company",
+          },
+          of: (n) =>
+            rawType(n) === "COMPANY"
+              ? INDUSTRY_MAP[n.id] || "OTHER"
+              : "OTHER",
+        },
       };
-      const NODE_TYPE_LABELS = {
-        COMPANY: "Company",
-        SECTOR: "Sector / product",
-        REGION: "Region",
-        INSTITUTION: "Institution",
+      // GICS-flavored industry buckets, curated per canonical id. NVIDIA product
+      // SKUs the extractor emitted as companies (B200, Hopper…) sit under SEMI.
+      const INDUSTRY_GROUPS = {
+        SEMI: [
+          "NVIDIA", "nvda", "AMD", "INTC", "Intel", "Broadcom", "博通",
+          "MRVL", "Marvell", "MediaTek", "QCOM", "高通", "Texas Instruments",
+          "TSMC", "SMIC", "三星Foundry", "Samsung", "GFS", "TOWER", "Tower",
+          "TSEM", "AMKOR", "ASE", "KYEC", "SK", "SK Hynix", "Micron",
+          "Kioxia", "Kiaxio", "Sandisk", "长存", "长鑫", "存储原厂",
+          "昆仑芯", "展锐", "豪威", "OV", "长光辰芯", "Cerebras", "Groq",
+          "SambaNova", "AlphaWave", "ALAB", "SNPS", "macom",
+          "Mellanox", "Mellonox", "Fiji", "B200", "Blackwell", "GB200",
+          "GB300", "Grace Blackwell", "H20", "H200", "Hopper", "Rubin",
+          "Vera Rubin", "RTX-PRO", "DGX Spark", "DGX Station", "Spectrum-X",
+        ],
+        EQUIP: [
+          "ASML", "Apply material", "KLA", "Lam Research", "TEL", "Lasertec",
+          "SAMCO", "Sumco", "SOI", "ABF", "AXT", "GLW", "康宁", "三菱",
+          "滨松", "新凯来", "弘塑", "大族", "大族数控", "杰普特", "锐科",
+          "创鑫", "万润", "万润科技", "宁德时代", "兴森", "臻鼎",
+          "臻鼎/鹏鼎", "鹏鼎", "沪电", "深南电路", "生益电子", "胜宏",
+          "礼鼎", "旗胜",
+        ],
+        COMMS: [
+          "Innolight", "COHR", "LITE", "新易盛", "Source Photonics", "天孚",
+          "TF", "昂纳", "波若威", "上诠", "长飞", "康普", "Arista Networks",
+          "Ericsson", "Celestical AI", "Sunny", "创想三维",
+        ],
+        HARDWARE: [
+          "Apple", "iPhone", "iPhone 17 Pro", "Dell", "HP", "Lenovo",
+          "小米", "荣耀", "传音控股", "华为", "Foxconn", "立讯精密",
+          "大疆", "影石", "拓竹", "Nidec", "尼德科", "Tesla", "TSLA",
+          "比亚迪", "QUEST", "Rayban",
+        ],
+        INTERNET: [
+          "Google", "GEMINI", "Meta", "Microsoft", "MFST", "Amazon",
+          "亚马逊", "腾讯", "百度", "字节", "OpenAI", "Anthropic",
+          "Open Router", "VMWare", "Coweave", "甲骨文", "HUMAIN",
+        ],
+        FINANCIAL: ["UBS", "Silver Lake", "软银"],
       };
+      const INDUSTRY_MAP = {};
+      Object.entries(INDUSTRY_GROUPS).forEach(([k, list]) =>
+        list.forEach((id) => (INDUSTRY_MAP[id] = k)),
+      );
+
+      let colorScheme = "role";
+      let NODE_TYPE_COLORS = SCHEME_DEFS.role.colors;
+      let NODE_TYPE_LABELS = SCHEME_DEFS.role.labels;
+      let roleById = new Map(); // company id → value-chain role (from all edges)
       const DIM_NODE_3D = "#232637";
       const DIM_LINK_3D = "#1b1e2c";
 
-      const nodeType = (n) => n.type || "COMPANY";
+      const rawType = (n) => n.type || "COMPANY";
+      const nodeType = (n) => SCHEME_DEFS[colorScheme].of(n);
       const nodeColor = (n) => NODE_TYPE_COLORS[nodeType(n)] || "#3987e5";
+
+      // Value-chain role from supply-edge directions, mention-weighted.
+      // Computed over ALL weeks so a node keeps its color under week filters.
+      function computeRoles(nodes, edges) {
+        const out = new Map(),
+          inn = new Map();
+        const add = (m, k, v) => m.set(k, (m.get(k) || 0) + v);
+        edges.forEach((e) => {
+          const w = e.mention_count || 1;
+          if (e.relation_type === "SUPPLIES") {
+            add(out, e.source, w);
+            add(inn, e.target, w);
+          } else if (e.relation_type === "CONTRACTS_WITH") {
+            // buyer contracts supplier: the target is the one supplying
+            add(out, e.target, w);
+            add(inn, e.source, w);
+          }
+        });
+        const roles = new Map();
+        nodes.forEach((n) => {
+          if (rawType(n) !== "COMPANY") return;
+          const o = out.get(n.id) || 0,
+            i = inn.get(n.id) || 0;
+          let r;
+          if (o + i === 0) r = "PERIPHERAL";
+          else {
+            const s = o / (o + i);
+            r = s >= 0.75 ? "UPSTREAM" : s <= 0.25 ? "DOWNSTREAM" : "INTEGRATOR";
+          }
+          roles.set(n.id, r);
+        });
+        return roles;
+      }
       const esc = (s) =>
         s == null
           ? ""
@@ -791,7 +952,17 @@
       function init(data) {
         allNodes = data.nodes;
         allEdges = data.edges;
+        roleById = computeRoles(allNodes, allEdges);
+        const schemeParam = new URLSearchParams(location.search).get("scheme");
+        if (SCHEME_DEFS[schemeParam]) colorScheme = schemeParam;
+        NODE_TYPE_COLORS = SCHEME_DEFS[colorScheme].colors;
+        NODE_TYPE_LABELS = SCHEME_DEFS[colorScheme].labels;
+        activeTypes = new Set(Object.keys(NODE_TYPE_COLORS));
         typeById = new Map(allNodes.map((n) => [n.id, nodeType(n)]));
+
+        const schemeSel = document.getElementById("scheme-select");
+        schemeSel.value = colorScheme;
+        schemeSel.addEventListener("change", () => setScheme(schemeSel.value));
 
         buildTypeFilter();
         buildRelTypeFilter();
@@ -884,6 +1055,22 @@
         if (params.get("mode") === "3d") setMode("3d");
         const iso = params.get("isolate");
         if (iso && typeById.has(iso)) isolateEntity(iso);
+      }
+
+      // ---- color scheme switch ----------------------------------------------------
+      function setScheme(s) {
+        if (!SCHEME_DEFS[s] || s === colorScheme) return;
+        colorScheme = s;
+        NODE_TYPE_COLORS = SCHEME_DEFS[s].colors;
+        NODE_TYPE_LABELS = SCHEME_DEFS[s].labels;
+        typeById = new Map(allNodes.map((n) => [n.id, nodeType(n)]));
+        activeTypes = new Set(Object.keys(NODE_TYPE_COLORS));
+        buildTypeFilter();
+        // recolor in place — layout stays put; applyFocus re-applies 3D colors
+        if (nodeGroup) nodeGroup.selectAll("circle").attr("fill", (d) => nodeColor(d));
+        applyVisibility();
+        applyFocus();
+        updateStats();
       }
 
       // ---- week multi-select ----------------------------------------------------
@@ -1036,7 +1223,8 @@
       }
 
       // ---- shared data prep -------------------------------------------------------
-      const typeActive = (id) => activeTypes.has(typeById.get(id) || "COMPANY");
+      const typeActive = (id) =>
+        !typeById.has(id) || activeTypes.has(typeById.get(id));
       const linkId = (endpoint) =>
         endpoint && endpoint.id != null ? endpoint.id : endpoint;
 
