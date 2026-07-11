@@ -706,6 +706,8 @@
       let userInteracted2D = false; // stops auto-fit once the user pans/zooms/drags
       let userInteracted3D = false; // same, for the 3D camera
       let graph3d = null;
+      let contextLost3d = false; // WebGL context currently lost (recovering)
+      let create3dAttempts = 0; // consecutive failed 3D-renderer creations
       let wScale2D = null; // 2D bundle width scale (set per render)
       let wMax3d = 1; // 3D max combined bundle weight (set per render)
       let sprites3d = new Map(); // node id → label sprite (current 3D scene)
@@ -717,7 +719,10 @@
 
       // Prefer live file when served (auto-fresh); fall back to embedded data so the
       // page also works when opened directly from disk (file://), no server needed.
-      fetch("../data/output/graph.json")
+      // ?data=<name> loads ../data/output/<name>.json instead (e.g. ?data=graph_weekly15).
+      const dataName = (new URLSearchParams(location.search).get("data") || "graph")
+        .replace(/[^\w-]/g, "");
+      fetch(`../data/output/${dataName}.json`)
         .then((r) => {
           if (!r.ok) throw new Error(r.status);
           return r.json();
@@ -1381,6 +1386,7 @@
         document.getElementById("hint-2d").style.display =
           m === "2d" ? "block" : "none";
         if (m === "2d" && simulation) simulation.alphaTarget(0).restart();
+        if (m === "3d") create3dAttempts = 0; // give a manual switch fresh retries
         renderActive();
       }
 
@@ -1708,6 +1714,116 @@
       font-size:13px;line-height:1.6">${msg}</div>`;
       }
 
+      // Diagnostic ONLY — runs after a real failure to surface the browser's
+      // actual reason. Never used as a gate (a prior probe was removed for
+      // false-negativing on WebGL1), so it can't block a working renderer.
+      function webglFailureReason() {
+        try {
+          const c = document.createElement("canvas");
+          let reason = "";
+          c.addEventListener(
+            "webglcontextcreationerror",
+            (e) => {
+              reason = e.statusMessage || "";
+            },
+            false,
+          );
+          const gl =
+            c.getContext("webgl2") ||
+            c.getContext("webgl") ||
+            c.getContext("experimental-webgl");
+          if (gl) {
+            const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+            const r = dbg
+              ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)
+              : "unknown GPU";
+            return "WebGL is available now (" + r + ") — press retry.";
+          }
+          return (
+            "getContext returned null — WebGL is disabled or blocked" +
+            (reason ? " (" + reason + ")" : ".")
+          );
+        } catch (e) {
+          return e && e.message ? e.message : String(e);
+        }
+      }
+
+      // Non-destructive overlay: keeps the <canvas> (and its context-restore
+      // listener) alive underneath, so a lost context can actually recover.
+      function show3dOverlay(msg) {
+        const c = document.getElementById("graph-3d");
+        let o = document.getElementById("overlay-3d");
+        if (!o) {
+          o = document.createElement("div");
+          o.id = "overlay-3d";
+          o.style.cssText =
+            "position:absolute;inset:0;display:flex;align-items:center;" +
+            "justify-content:center;padding:32px;text-align:center;color:#e66767;" +
+            "font-size:13px;line-height:1.6;background:rgba(15,17,23,0.82);z-index:5";
+          c.appendChild(o);
+        }
+        o.innerHTML = msg;
+        o.style.display = "flex";
+      }
+      function hide3dOverlay() {
+        const o = document.getElementById("overlay-3d");
+        if (o) o.style.display = "none";
+      }
+
+      // Tear down the 3D graph and build it fresh — used to recover from a
+      // restored WebGL context or a manual retry.
+      function rebuild3D() {
+        try {
+          if (graph3d && graph3d._destructor) graph3d._destructor();
+        } catch (e) {}
+        graph3d = null;
+        document.getElementById("graph-3d").innerHTML = "";
+        render3D();
+      }
+      // reachable from inline onclick in the error UI; resets the retry budget
+      window.retry3D = function () {
+        create3dAttempts = 0;
+        rebuild3D();
+        return false;
+      };
+
+      // A live WebGL context can be lost (GPU reset, tab backgrounded, driver
+      // hiccup). Without preventDefault() the browser never fires 'restored',
+      // so the view stays dead until a full reload — this wires up real recovery.
+      function attach3dContextGuards() {
+        let canvas;
+        try {
+          canvas = graph3d.renderer().domElement;
+        } catch (e) {
+          return;
+        }
+        if (!canvas || canvas.__ctxGuarded) return;
+        canvas.__ctxGuarded = true;
+        canvas.addEventListener(
+          "webglcontextlost",
+          (ev) => {
+            ev.preventDefault(); // REQUIRED for 'webglcontextrestored' to fire
+            contextLost3d = true;
+            show3dOverlay(
+              "3D lost its WebGL context (GPU hiccup or a backgrounded tab)." +
+                "<br>Recovering automatically when the GPU is back…" +
+                "<br><br><a href='#' onclick='return retry3D()' " +
+                "style='color:#8fb7ff'>Retry now</a> · or use the 2D view.",
+            );
+          },
+          false,
+        );
+        canvas.addEventListener(
+          "webglcontextrestored",
+          () => {
+            contextLost3d = false;
+            hide3dOverlay();
+            if (mode === "3d") rebuild3D();
+          },
+          false,
+        );
+      }
+
       function render3D() {
         if (
           typeof ForceGraph3D === "undefined" ||
@@ -1870,12 +1986,46 @@
                   node3dRadius(l.source, mcMax) +
                   node3dRadius(l.target, mcMax),
               );
+            attach3dContextGuards(); // auto-recover from later context loss
+            create3dAttempts = 0; // fresh context is live
           } catch (e) {
+            // free whatever partial context/canvas was created so retries don't
+            // pile up more dead contexts (the usual cause of the intermittent
+            // "Error creating WebGL context")
+            try {
+              if (graph3d && graph3d._destructor) graph3d._destructor();
+            } catch (_) {}
             graph3d = null;
+            document.getElementById("graph-3d").innerHTML = "";
+            create3dAttempts++;
+            const detail = e && e.message ? e.message : String(e);
+
+            // A crashed/restarting GPU process or a momentarily exhausted
+            // context pool often frees up within a second — retry a couple
+            // times before giving up.
+            if (create3dAttempts < 3) {
+              show3dError(
+                "Starting the 3D renderer… (attempt " + create3dAttempts + " of 3)",
+              );
+              setTimeout(() => {
+                if (mode === "3d" && !graph3d) rebuild3D();
+              }, 700);
+              return;
+            }
+
             show3dError(
-              "Could not initialise the 3D renderer (WebGL):<br>" +
-                (e && e.message ? e.message : e) +
-                "<br><br>Try enabling hardware acceleration, or use the 2D view.",
+              "Could not initialise the 3D renderer (WebGL): " +
+                detail +
+                "<br><br><b>Diagnosis:</b> " +
+                webglFailureReason() +
+                "<br><br>Fix: open a new tab at <b>chrome://gpu</b> and check " +
+                "“WebGL / WebGL2”. If it says <i>disabled</i> or " +
+                "<i>software only</i>, enable hardware acceleration " +
+                "(<b>chrome://settings/system</b> → “Use hardware acceleration " +
+                "when available” → ON), then <b>fully quit</b> the browser " +
+                "(⌘Q, not just close the window) and reopen.<br><br>" +
+                "<a href='#' onclick='return retry3D()' " +
+                "style='color:#8fb7ff'>retry</a> — the 2D view works meanwhile.",
             );
             return;
           }

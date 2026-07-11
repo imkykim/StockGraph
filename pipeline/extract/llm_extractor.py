@@ -36,7 +36,7 @@ def _call_openai(messages: list[dict], api_key: str, base_url: str | None = None
     from openai import OpenAI
     client = OpenAI(api_key=api_key, base_url=base_url)
     full_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
-    model = "Qwen3-32B"
+    model = os.environ.get("LLM_MODEL", "Qwen3-32B")
     extra = {"enable_thinking": False} if "Qwen3" in model else {}
     response = client.chat.completions.create(
         model=model,
@@ -58,10 +58,21 @@ def _extract_chunk(chunk: Chunk, caller) -> tuple[list[RawCompany], list[RawRela
         print(f"  [warn] chunk {chunk.chunk_id}: {e}", file=sys.stderr)
         return [], []
 
+    if isinstance(data, list):
+        # Some models return a bare array instead of the wrapping object.
+        if all(isinstance(x, str) for x in data):
+            data = {"companies": data}
+        else:
+            data = {"relations": [r for r in data if isinstance(r, dict)]}
+    elif not isinstance(data, dict):
+        print(f"  [warn] chunk {chunk.chunk_id}: unexpected JSON type {type(data).__name__}", file=sys.stderr)
+        return [], []
+
     raw_companies = data.get("companies", [])
     companies = [
-        RawCompany(surface=c if isinstance(c, str) else c["surface"])
+        RawCompany(surface=c if isinstance(c, str) else c.get("surface", ""))
         for c in raw_companies
+        if isinstance(c, str) or (isinstance(c, dict) and c.get("surface"))
     ]
     relations = []
     for r in data.get("relations", []):
