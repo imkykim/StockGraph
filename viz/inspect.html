@@ -1562,9 +1562,9 @@
         simNodesById = new Map(simNodes.map((n) => [n.id, n]));
 
         const mcMax = d3.max(simNodes, (d) => d.mention_count) || 1;
-        // pow(0.75) + wider range: majors stand out ~7× over one-mention firms
-        // (was scaleSqrt [14,54], barely 3×)
-        const rScale = d3.scalePow().exponent(0.75).domain([0, mcMax]).range([8, 62]);
+        // pow(0.75) + wider range: majors stand out ~4.5× over one-mention firms
+        // (was scaleSqrt [14,54], barely 3×; [8,62] read as too extreme)
+        const rScale = d3.scalePow().exponent(0.75).domain([0, mcMax]).range([12, 60]);
         simNodes.forEach((n) => (n.__r = rScale(n.mention_count)));
         wScale2D = d3
           .scaleSqrt()
