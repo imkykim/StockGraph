@@ -225,14 +225,61 @@
       .ctl-row > div {
         flex: 1;
       }
-      #week-select {
+      #week-btn {
         background: var(--panel-2);
         color: var(--ink);
         border: 1px solid var(--border);
         border-radius: 6px;
         padding: 5px 8px;
         font-size: 11px;
-        width: 100%;
+        flex: 1;
+        min-width: 0;
+        text-align: left;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: border-color 0.15s;
+      }
+      #week-btn:hover,
+      #week-btn.open {
+        border-color: var(--accent);
+      }
+      #week-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        z-index: 30;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px;
+        max-height: 240px;
+        overflow-y: auto;
+        min-width: 160px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      }
+      #week-menu.open {
+        display: block;
+      }
+      #controls #week-menu label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--ink);
+        font-size: 11px;
+        margin: 0;
+        padding: 3px 5px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #controls #week-menu label:hover {
+        background: rgba(255, 255, 255, 0.06);
+      }
+      #week-menu .wk-sep {
+        border-top: 1px solid var(--border);
+        margin: 4px 0;
       }
       #weight-slider {
         width: 100%;
@@ -558,10 +605,11 @@
           <div class="ctl-row">
             <div>
               <label>Week</label>
-              <div style="display: flex; gap: 4px">
-                <select id="week-select" style="flex: 1; min-width: 0">
-                  <option value="all">All weeks</option>
-                </select>
+              <div style="display: flex; gap: 4px; position: relative">
+                <button id="week-btn" title="Select weeks (multi)">
+                  All weeks
+                </button>
+                <div id="week-menu"></div>
                 <button id="week-prev" class="wk-btn" title="Older week">
                   ◀
                 </button>
@@ -695,7 +743,8 @@
 
       let allNodes = [],
         allEdges = [],
-        activeWeek = "all",
+        activeWeeks = new Set(), // selected weeks; empty = all weeks
+        weeksList = [], // all weeks, newest first
         isolateId = null, // restrict view to this entity's 1-hop neighborhood
         minWeight = 0,
         activeTypes = new Set(Object.keys(NODE_TYPE_COLORS)),
@@ -749,20 +798,9 @@
         buildHubChips();
         buildSearch();
 
-        // Populate week filter
-        const weeks = [...new Set(allEdges.map((e) => e.date))].sort().reverse();
-        const sel = document.getElementById("week-select");
-        weeks.forEach((w) => {
-          const opt = document.createElement("option");
-          opt.value = w;
-          opt.textContent = `${w.slice(0, 4)}-${w.slice(4, 6)}-${w.slice(6)}`;
-          sel.appendChild(opt);
-        });
-        sel.addEventListener("change", () => {
-          activeWeek = sel.value;
-          clearFocus();
-          renderActive();
-        });
+        // Populate week filter (multi-select checkbox menu)
+        weeksList = [...new Set(allEdges.map((e) => e.date))].sort().reverse();
+        buildWeekMenu();
 
         // Weight slider prunes weak edges (visibility only — layout stays put)
         const slider = document.getElementById("weight-slider");
@@ -848,18 +886,90 @@
         if (iso && typeById.has(iso)) isolateEntity(iso);
       }
 
-      // Step through the week dropdown: +1 = newer (ending at "All weeks"),
-      // -1 = older.
+      // ---- week multi-select ----------------------------------------------------
+      const fmtWeek = (w) => `${w.slice(0, 4)}-${w.slice(4, 6)}-${w.slice(6)}`;
+
+      function buildWeekMenu() {
+        const btn = document.getElementById("week-btn");
+        const menu = document.getElementById("week-menu");
+        menu.innerHTML = "";
+
+        const addRow = (text, checked, onChange) => {
+          const row = document.createElement("label");
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.checked = checked;
+          cb.addEventListener("change", () => onChange(cb));
+          const txt = document.createElement("span");
+          txt.textContent = text;
+          row.append(cb, txt);
+          menu.appendChild(row);
+          return cb;
+        };
+
+        const allCb = addRow("All weeks", true, () => {
+          setWeeks([]); // checking or unchecking "All" always resets to all
+        });
+        const sep = document.createElement("div");
+        sep.className = "wk-sep";
+        menu.appendChild(sep);
+
+        const weekCbs = new Map();
+        weeksList.forEach((w) => {
+          weekCbs.set(
+            w,
+            addRow(fmtWeek(w), false, (cb) => {
+              const next = new Set(activeWeeks);
+              cb.checked ? next.add(w) : next.delete(w);
+              setWeeks([...next]);
+            }),
+          );
+        });
+
+        // Keep checkboxes and button label in sync with activeWeeks.
+        syncWeekUI = () => {
+          allCb.checked = activeWeeks.size === 0;
+          weekCbs.forEach((cb, w) => (cb.checked = activeWeeks.has(w)));
+          btn.textContent =
+            activeWeeks.size === 0
+              ? "All weeks"
+              : activeWeeks.size === 1
+                ? fmtWeek([...activeWeeks][0])
+                : `${activeWeeks.size} weeks · ${fmtWeek([...activeWeeks].sort().reverse()[0])} …`;
+        };
+
+        btn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          menu.classList.toggle("open");
+          btn.classList.toggle("open", menu.classList.contains("open"));
+        });
+        menu.addEventListener("click", (ev) => ev.stopPropagation());
+        document.addEventListener("click", () => {
+          menu.classList.remove("open");
+          btn.classList.remove("open");
+        });
+      }
+
+      let syncWeekUI = () => {};
+
+      function setWeeks(weeks) {
+        activeWeeks = new Set(weeks);
+        syncWeekUI();
+        clearFocus();
+        renderActive();
+      }
+
+      // Step to a single week: +1 = newer (ending at "All weeks"), -1 = older.
+      // A multi-week selection collapses to the newest selected week's neighbor.
       function stepWeek(dir) {
-        const sel = document.getElementById("week-select");
-        const i =
+        const i = activeWeeks.size
+          ? Math.min(...[...activeWeeks].map((w) => weeksList.indexOf(w)))
+          : -1; // -1 = "All weeks"
+        const j =
           dir < 0
-            ? Math.min(sel.options.length - 1, sel.selectedIndex + 1)
-            : Math.max(0, sel.selectedIndex - 1);
-        if (i !== sel.selectedIndex) {
-          sel.selectedIndex = i;
-          sel.dispatchEvent(new Event("change"));
-        }
+            ? Math.min(weeksList.length - 1, i + 1)
+            : Math.max(-1, i - 1);
+        if (j !== i) setWeeks(j < 0 ? [] : [weeksList[j]]);
       }
 
       // ---- isolate mode -------------------------------------------------------------
@@ -942,10 +1052,9 @@
       // included), so toggling a type or dragging the weight slider never
       // reshuffles positions — it just flips visibility.
       function weekData() {
-        let edges =
-          activeWeek === "all"
-            ? allEdges
-            : allEdges.filter((e) => e.date === activeWeek);
+        let edges = activeWeeks.size
+          ? allEdges.filter((e) => activeWeeks.has(e.date))
+          : allEdges;
         if (isolateId) {
           // the focal entity, its direct partners, and the links among them
           const hood = new Set([isolateId]);
@@ -1453,7 +1562,9 @@
         simNodesById = new Map(simNodes.map((n) => [n.id, n]));
 
         const mcMax = d3.max(simNodes, (d) => d.mention_count) || 1;
-        const rScale = d3.scaleSqrt().domain([0, mcMax]).range([14, 54]);
+        // pow(0.75) + wider range: majors stand out ~7× over one-mention firms
+        // (was scaleSqrt [14,54], barely 3×)
+        const rScale = d3.scalePow().exponent(0.75).domain([0, mcMax]).range([8, 62]);
         simNodes.forEach((n) => (n.__r = rScale(n.mention_count)));
         wScale2D = d3
           .scaleSqrt()
@@ -1685,7 +1796,10 @@
         return NODE_REL_SIZE_3D * Math.cbrt(nodeVal3d(n, mcMax));
       }
       function nodeVal3d(n, mcMax) {
-        return (n.mention_count / mcMax) * 26 + 4;
+        // cubed so the rendered radius (∝ cbrt of this) follows the same
+        // pow(0.75) contrast curve as the 2D view (~4× majors vs tail, was ~2×)
+        const r = 1.05 + Math.pow(n.mention_count / mcMax, 0.75) * 3.1;
+        return r * r * r;
       }
 
       function makeLabel(n, mcMax) {
@@ -1693,7 +1807,8 @@
           if (typeof SpriteText !== "function") return null;
           const sprite = new SpriteText(n.label);
           sprite.color = "#f2f5ff";
-          sprite.textHeight = 5 + (n.mention_count / mcMax) * 6; // bigger for hubs
+          sprite.textHeight =
+            4.5 + Math.pow(n.mention_count / mcMax, 0.75) * 7; // bigger for hubs
           sprite.fontWeight = "700";
           sprite.backgroundColor = "rgba(11,13,20,0.72)";
           sprite.padding = 2;
