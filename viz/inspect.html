@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <title>ChainGraph — Supply Chain Inspector</title>
+    <!-- Inter for UI text; offline/file:// use falls back to the system stack -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
         --surface: #0f1117; /* graph canvas — palette validated against this */
@@ -20,7 +27,13 @@
         padding: 0;
       }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family:
+          Inter,
+          "IBM Plex Sans",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
         background: var(--surface);
         color: var(--ink);
         height: 100vh;
@@ -39,10 +52,21 @@
         position: absolute;
         inset: 0;
       }
+      /* subtle radial vignette + dot grid so 2D reads as a material canvas,
+         not a raw black buffer (3D paints its own opaque background) */
+      #svg-container {
+        background-image:
+          radial-gradient(rgba(154, 163, 199, 0.055) 1px, transparent 1.1px),
+          radial-gradient(ellipse at center, #131624 0%, #0f1117 70%);
+        background-size:
+          26px 26px,
+          100% 100%;
+      }
       #graph-3d {
         display: none;
       }
-      #hint-3d {
+      #hint-3d,
+      #hint-flow {
         position: absolute;
         bottom: 10px;
         left: 12px;
@@ -321,6 +345,7 @@
       #stats {
         font-size: 10.5px;
         color: var(--ink-muted);
+        font-variant-numeric: tabular-nums;
       }
       #hubs {
         display: flex;
@@ -559,7 +584,6 @@
         pointer-events: none;
         fill: #f2f5ff;
         font-weight: 700;
-        text-anchor: middle;
         paint-order: stroke;
         stroke: #0b0d14;
         stroke-width: 4px;
@@ -568,15 +592,11 @@
       .node.dim {
         opacity: 0.1;
       }
+      /* link opacity is managed exclusively via the opacity attribute
+         (EDGE_OPACITY_BASE/FOCUS in JS) — no CSS opacity rules here, so the
+         two-band system can't be silently overridden */
       .link {
-        fill: none;
         transition: opacity 0.15s;
-      }
-      .link.dim {
-        opacity: 0.06;
-      }
-      .link.focus {
-        opacity: 1 !important;
       }
       .link-hit {
         fill: none;
@@ -598,6 +618,11 @@
           drag = rotate · scroll = zoom · right-drag = pan · drag node = pin ·
           right-click node = unpin · Esc = clear
         </div>
+        <div id="hint-flow">
+          floors = value-chain levels (suppliers top → buyers bottom) · drag =
+          rotate · scroll = zoom · right-drag = pan · drag node = pin ·
+          right-click node = unpin · Esc = clear
+        </div>
         <button id="fit-btn" title="Fit graph to view">⛶ Fit</button>
         <div id="tooltip"></div>
       </div>
@@ -607,6 +632,7 @@
             <h1>ChainGraph</h1>
             <div id="mode-toggle">
               <button id="btn-2d" class="active">2D</button>
+              <button id="btn-flow">Flow</button>
               <button id="btn-3d">3D</button>
             </div>
           </div>
@@ -695,14 +721,32 @@
                 quantity get a 0.1 floor. The thickest lines are big deals
                 mentioned repeatedly.
               </p>
-              <p><b>Line opacity</b> — extraction confidence.</p>
+              <p>
+                <b>Muted by default</b> — lines rest at low opacity (extraction
+                confidence nudges it slightly); hovering or selecting a node or
+                line lifts its neighborhood to full color.
+              </p>
               <p>
                 <b>Line style</b> — solid = SUPPLIES / CONTRACTS_WITH, dashed =
                 COMPETES_WITH, dotted = CO_MENTION.
               </p>
               <p>
-                <b>Arrow</b> — direction of the relation (e.g. supplier →
-                customer).
+                <b>Direction</b> — solid lines taper: thick end = source
+                (supplier), thin end = target (customer). Dashed and dotted
+                relations are symmetric, so they carry no direction. (The 3D
+                views keep small arrowheads instead.)
+              </p>
+              <p>
+                <b>Labels</b> — only the best-connected entities are labeled at
+                the default zoom; zoom in to reveal more. A hovered or selected
+                neighborhood is always labeled.
+              </p>
+              <p>
+                <b>Default view</b> — CO_MENTION starts off and the weight
+                slider starts at the 15th-percentile record weight, so the
+                weakest links are hidden. Re-tick CO_MENTION and drop the
+                slider to 0 to see everything, or open with
+                <code>?minw=0&amp;comention=1</code>.
               </p>
               <p>
                 <b>Click a line</b> — see its individual records with dates,
@@ -714,6 +758,14 @@
                 neighborhood”: only that entity, its direct partners and the
                 links among them stay. Exit with the chip above the stats or
                 Esc.
+              </p>
+              <p>
+                <b>Flow view</b> — 3D floors stacked by value-chain level:
+                mostly-suppliers on the top floor, mostly-buyers below, so
+                supply edges pour downward between floors. Each floor spreads
+                out horizontally on its own plane; companies with no
+                supply/contract ties sit on the separate Peripheral floor at
+                the bottom.
               </p>
             </div>
           </details>
@@ -736,9 +788,13 @@
     <script src="lib/3d-force-graph.min.js"></script>
     <script>
       // Colors are validated (scripts/validate_palette.js, dark surface #0f1117):
-      // node set passes all-pairs CVD with direct labels as secondary encoding;
-      // edge set's red↔aqua pair sits in the 8–12 floor band, so COMPETES_WITH
-      // additionally carries a dash pattern and CO_MENTION is dotted gray.
+      // both node schemes pass all four checks (lightness band, chroma floor,
+      // adjacent-pair CVD, contrast) — DOWNSTREAM is rose, not violet, because
+      // blue↔violet collapses under protanopia (ΔE 2.8). Edge set's red↔aqua
+      // pair sits in the 8–12 floor band, so COMPETES_WITH additionally carries
+      // a dash pattern and CO_MENTION is dotted gray.
+      // Edge color is treated as an interaction resource: links rest at low
+      // opacity and only a hovered/selected neighborhood lights up fully.
       const EDGE_COLORS = {
         SUPPLIES: "#199e70",
         CONTRACTS_WITH: "#d95926",
@@ -757,12 +813,15 @@
       // PERIPHERAL/OTHER are deliberately gray so they recede.
       const SCHEME_DEFS = {
         role: {
-          // cool hues only — green/orange/red (and warm amber) belong to edges
+          // lightness-equalized (OKLCH L≈0.62–0.66) so no category shouts —
+          // DOWNSTREAM is the biggest bucket (45 nodes) and used to scream in
+          // saturated pink. Green/orange/red stay edge-only; PERIPHERAL is
+          // darker than the old gray so the 24 peripherals recede by design.
           colors: {
-            UPSTREAM: "#1e9dbe",
-            INTEGRATOR: "#3987e5",
-            DOWNSTREAM: "#d55181",
-            PERIPHERAL: "#6e7691",
+            UPSTREAM: "#2ba3a0",
+            INTEGRATOR: "#4a7fd9",
+            DOWNSTREAM: "#b56a92",
+            PERIPHERAL: "#464b63",
             SECTOR: "#9085e9",
             REGION: "#cb6b8e",
             INSTITUTION: "#5a51d6",
@@ -856,6 +915,24 @@
       let NODE_TYPE_COLORS = SCHEME_DEFS.role.colors;
       let NODE_TYPE_LABELS = SCHEME_DEFS.role.labels;
       let roleById = new Map(); // company id → value-chain role (from all edges)
+
+      // ---- Flow (layered 3D) view geometry ----
+      // One horizontal floor per value-chain role, stacked vertically:
+      // suppliers on top, buyers below, no-supply-ties on a separate floor
+      // at the bottom. Nodes get fy pinned to their floor; the force layout
+      // spreads each floor in the horizontal plane.
+      const FLOW3D_Y = {
+        UPSTREAM: 420,
+        INTEGRATOR: 140,
+        DOWNSTREAM: -140,
+        PERIPHERAL: -460,
+      };
+      const flowFloorKey = (n) => {
+        const r = rawType(n) === "COMPANY" ? roleById.get(n.id) : null;
+        return FLOW3D_Y[r] != null ? r : "PERIPHERAL";
+      };
+      const flowFloorY = (n) => FLOW3D_Y[flowFloorKey(n)];
+      let flowFloorObjs = []; // THREE objects for the floor planes/labels
       const DIM_NODE_3D = "#232637";
       const DIM_LINK_3D = "#1b1e2c";
 
@@ -910,7 +987,11 @@
         isolateId = null, // restrict view to this entity's 1-hop neighborhood
         minWeight = 0,
         activeTypes = new Set(Object.keys(NODE_TYPE_COLORS)),
-        activeRelTypes = new Set(Object.keys(EDGE_COLORS)),
+        // curated first load: CO_MENTION (weakest signal) starts off —
+        // "show everything" is the user's choice, not the default
+        activeRelTypes = new Set(
+          Object.keys(EDGE_COLORS).filter((t) => t !== "CO_MENTION"),
+        ),
         typeById = new Map(),
         mode = "2d";
       let simulation, svg, g, linkGroup, hitGroup, nodeGroup, zoomBehavior;
@@ -930,9 +1011,11 @@
 
       // Prefer live file when served (auto-fresh); fall back to embedded data so the
       // page also works when opened directly from disk (file://), no server needed.
-      // ?data=<name> loads ../data/output/<name>.json instead (e.g. ?data=graph_weekly15).
-      const dataName = (new URLSearchParams(location.search).get("data") || "graph")
-        .replace(/[^\w-]/g, "");
+      // Default = the 15-week Kimi run; ?data=<name> loads
+      // ../data/output/<name>.json instead (e.g. ?data=graph for the original 5-week run).
+      const dataName = (
+        new URLSearchParams(location.search).get("data") || "graph_weekly15"
+      ).replace(/[^\w-]/g, "");
       fetch(`../data/output/${dataName}.json`)
         .then((r) => {
           if (!r.ok) throw new Error(r.status);
@@ -947,12 +1030,15 @@
           document.getElementById("detail").innerHTML =
             `<p style="color:#e66767;font-size:12px">Could not load graph data.</p>
        <p class="placeholder" style="margin-top:8px">Regenerate the embedded copy:<br>
-       <code style="color:#9aa3c7">python3 -c "import json;d=json.load(open('data/output/graph.json'));open('viz/graph-data.js','w').write('window.EMBEDDED_GRAPH='+json.dumps(d,ensure_ascii=False)+';')"</code></p>`;
+       <code style="color:#9aa3c7">python3 -c "import json;d=json.load(open('data/output/graph_weekly15.json'));open('viz/graph-data.js','w').write('window.EMBEDDED_GRAPH='+json.dumps(d,ensure_ascii=False)+';')"</code></p>`;
         });
 
       function init(data) {
         allNodes = data.nodes;
         allEdges = data.edges;
+        // ?comention=1 restores the old default of CO_MENTION starting on
+        if (new URLSearchParams(location.search).get("comention") === "1")
+          activeRelTypes.add("CO_MENTION");
         roleById = computeRoles(allNodes, allEdges);
         const schemeParam = new URLSearchParams(location.search).get("scheme");
         if (SCHEME_DEFS[schemeParam]) colorScheme = schemeParam;
@@ -977,6 +1063,19 @@
         // Weight slider prunes weak edges (visibility only — layout stays put)
         const slider = document.getElementById("weight-slider");
         slider.max = String(Math.max(...allEdges.map((e) => e.weight), 0.1));
+        slider.step = "any"; // weights clump between 0.01–0.02; 0.01 steps can't cut there
+        // Curated first load: the weakest 15% of records start hidden so the
+        // first impression is structure, not a hairball. ?minw= overrides
+        // (e.g. ?minw=0&comention=1 reproduces the old show-everything view).
+        const urlParams = new URLSearchParams(location.search);
+        const sortedW = allEdges.map((e) => e.weight).sort((a, b) => a - b);
+        minWeight = d3.quantile(sortedW, 0.15) || 0;
+        const minwParam = urlParams.get("minw");
+        if (minwParam != null && !isNaN(+minwParam))
+          minWeight = Math.max(0, +minwParam);
+        slider.value = String(minWeight);
+        document.getElementById("weight-label").textContent =
+          minWeight.toFixed(2);
         slider.addEventListener("input", () => {
           minWeight = +slider.value;
           document.getElementById("weight-label").textContent =
@@ -986,24 +1085,9 @@
           updateStats();
         });
 
-        // 2D scaffold
+        // 2D scaffold — no arrowhead markers: direction is encoded by the
+        // taper of solid links instead (266 arrowheads are pure noise)
         svg = d3.select("#svg");
-        const defs = svg.append("defs");
-        Object.entries(EDGE_COLORS).forEach(([type, color]) => {
-          defs
-            .append("marker")
-            .attr("id", `arrow-${type}`)
-            .attr("viewBox", "0 -5 10 10")
-            .attr("refX", 9)
-            .attr("refY", 0)
-            .attr("markerWidth", 8)
-            .attr("markerHeight", 8)
-            .attr("markerUnits", "userSpaceOnUse")
-            .attr("orient", "auto")
-            .append("path")
-            .attr("d", "M0,-5L10,0L0,5")
-            .attr("fill", color);
-        });
         g = svg.append("g");
         linkGroup = g.append("g").attr("class", "links");
         hitGroup = g.append("g").attr("class", "link-hits");
@@ -1014,6 +1098,7 @@
           .on("zoom", (ev) => {
             if (ev.sourceEvent) userInteracted2D = true;
             g.attr("transform", ev.transform);
+            updateLabels2D(); // semantic zoom: more labels as k grows
           });
         svg.call(zoomBehavior).on("dblclick.zoom", null);
         svg.on("click", () => clearFocus());
@@ -1021,6 +1106,9 @@
         document
           .getElementById("btn-2d")
           .addEventListener("click", () => setMode("2d"));
+        document
+          .getElementById("btn-flow")
+          .addEventListener("click", () => setMode("flow"));
         document
           .getElementById("btn-3d")
           .addEventListener("click", () => setMode("3d"));
@@ -1053,7 +1141,8 @@
 
         // deep-linkable state, e.g. inspect.html?mode=3d&isolate=NVIDIA
         const params = new URLSearchParams(location.search);
-        if (params.get("mode") === "3d") setMode("3d");
+        const modeParam = params.get("mode");
+        if (modeParam === "3d" || modeParam === "flow") setMode(modeParam);
         const iso = params.get("isolate");
         if (iso && typeById.has(iso)) isolateEntity(iso);
       }
@@ -1193,6 +1282,10 @@
 
       // Fit the whole 2D graph into the viewport (used while the layout settles).
       function fitGraph2D(animate) {
+        // never fit a hidden svg: its zoom extent is 0×0, so the animated
+        // transform interpolates to NaN (e.g. sim tail ending after a quick
+        // switch to a WebGL mode)
+        if (mode !== "2d") return;
         const nodes = [...simNodesById.values()];
         if (!nodes.length) return;
         const xs = nodes.map((n) => n.x),
@@ -1296,6 +1389,119 @@
       const bundleConfidence = (b) =>
         Math.max(0.7, ...bundleVisibleMembers(b).map((m) => m.confidence));
 
+      // ---- 2D link opacity: the two-band system ----------------------------------
+      // Color is an interaction resource. At rest every link sits in a muted
+      // 0.22–0.38 band (confidence still nudges it); only a hovered/selected
+      // neighborhood is promoted to the 0.45–0.9 band. Managed exclusively
+      // through the opacity attribute — see the .link CSS comment.
+      const EDGE_OPACITY_BASE = (d) =>
+        (d.__dom || bundleDominant(d)) === "CO_MENTION"
+          ? 0.12 // already dotted gray — press it further into the background
+          : Math.max(
+              0.22,
+              Math.min(0.38, 0.22 + (bundleConfidence(d) - 0.7) * 0.65),
+            );
+      const EDGE_OPACITY_FOCUS = (d) =>
+        Math.max(0.45, Math.min(0.9, 0.4 + (bundleConfidence(d) - 0.7) * 1.8));
+      const EDGE_OPACITY_DIM = 0.06;
+
+      // ---- 2D link geometry -----------------------------------------------------
+      // move (px,py) toward (cx,cy) by r — trims endpoints to the node rims
+      const trimTo = (px, py, cx2, cy2, r) => {
+        const vx = cx2 - px,
+          vy = cy2 - py,
+          vl = Math.hypot(vx, vy) || 1;
+        return [px + (vx / vl) * r, py + (vy / vl) * r];
+      };
+
+      // Centerline of a bundle: quadratic (curved when a reverse bundle
+      // exists), endpoints trimmed to the circles, self-loop shape for A→A.
+      // Used by hit paths and by dashed (symmetric) links.
+      function linkCenter(d) {
+        const s = d.source,
+          t = d.target;
+        if (s === t || s.id === t.id) {
+          const r = s.__r;
+          return `M ${s.x} ${s.y - r + 2}
+                  C ${s.x - r * 1.9} ${s.y - r * 2.8},
+                    ${s.x + r * 1.9} ${s.y - r * 2.8},
+                    ${s.x + 2} ${s.y - r}`;
+        }
+        const dx = t.x - s.x,
+          dy = t.y - s.y,
+          dist = Math.hypot(dx, dy) || 1;
+        const nx = -dy / dist,
+          ny = dx / dist;
+        const off = (d.__curv || 0) * dist;
+        const mx = (s.x + t.x) / 2 + nx * off;
+        const my = (s.y + t.y) / 2 + ny * off;
+        const [sx, sy] = trimTo(s.x, s.y, mx, my, s.__r + 2);
+        const [tx, ty] = trimTo(t.x, t.y, mx, my, t.__r + 2);
+        return `M ${sx} ${sy} Q ${mx} ${my} ${tx} ${ty}`;
+      }
+
+      // Directional (solid) bundles render as a filled taper along the same
+      // quadratic: thick at the source, thin at the target — the taper IS the
+      // arrow, so no marker heads. Width comes from d.__w (set per filter
+      // state in applyVisibility2D).
+      function linkTaper(d) {
+        const s = d.source,
+          t = d.target;
+        const w0 = (d.__w || 2) + (d.__boost || 0); // +1px when in a focused neighborhood
+        const w1 = Math.max(0.6, w0 * 0.25);
+        const dx = t.x - s.x,
+          dy = t.y - s.y,
+          dist = Math.hypot(dx, dy) || 1;
+        const off = (d.__curv || 0) * dist;
+        const mx = (s.x + t.x) / 2 + (-dy / dist) * off;
+        const my = (s.y + t.y) / 2 + (dx / dist) * off;
+        const [sx, sy] = trimTo(s.x, s.y, mx, my, s.__r + 2);
+        const [tx, ty] = trimTo(t.x, t.y, mx, my, t.__r + 2);
+        const N = 8,
+          up = [],
+          dn = [];
+        for (let i = 0; i <= N; i++) {
+          const u = i / N,
+            v = 1 - u;
+          // point + tangent of the quadratic bezier at u
+          const px = v * v * sx + 2 * v * u * mx + u * u * tx;
+          const py = v * v * sy + 2 * v * u * my + u * u * ty;
+          const gx = v * (mx - sx) + u * (tx - mx);
+          const gy = v * (my - sy) + u * (ty - my);
+          const gl = Math.hypot(gx, gy) || 1;
+          const h = (w0 * v + w1 * u) / 2; // half-width, tapering s → t
+          up.push(px - (gy / gl) * h + " " + (py + (gx / gl) * h));
+          dn.push(px + (gy / gl) * h + " " + (py - (gx / gl) * h));
+        }
+        return "M " + up.join(" L ") + " L " + dn.reverse().join(" L ") + " Z";
+      }
+
+      const linkShape = (d) => (d.__taper ? linkTaper(d) : linkCenter(d));
+
+      // ---- semantic zoom labels ---------------------------------------------------
+      // Three tiers by node size (set in render2D): tier 1 (~18 majors) is
+      // always labeled, tier 2 appears at k ≥ 1.4, tier 3 at k ≥ 2.2. A
+      // focused neighborhood is always labeled regardless of zoom. The
+      // selection is only touched when the tier state or focus set actually
+      // changes — not on every zoom event.
+      const TIER_MIN_K = { 1: 0, 2: 1.4, 3: 2.2 };
+      let labelSig = null;
+      function updateLabels2D() {
+        if (!nodeGroup) return;
+        const k = d3.zoomTransform(svg.node()).k;
+        const shown = k >= 2.2 ? 3 : k >= 1.4 ? 2 : 1;
+        const set = focusNodeSet();
+        const sig =
+          shown + "|" + (set ? [...set].sort().join(",") : "");
+        if (sig === labelSig) return;
+        labelSig = sig;
+        nodeGroup
+          .selectAll("text")
+          .style("display", (d) =>
+            (set && set.has(d.id)) || (d.__tier || 3) <= shown ? null : "none",
+          );
+      }
+
       // A node is shown when its type is on and it has ≥1 visible edge.
       function visibleNodeIds(links) {
         const ids = new Set();
@@ -1354,7 +1560,7 @@
           row.className = "legend-row type-row";
           const cb = document.createElement("input");
           cb.type = "checkbox";
-          cb.checked = true;
+          cb.checked = activeRelTypes.has(t);
           cb.addEventListener("change", () => {
             cb.checked ? activeRelTypes.add(t) : activeRelTypes.delete(t);
             // Visibility-only update — do NOT rebuild the layout.
@@ -1565,13 +1771,38 @@
           .selectAll("g.node")
           .classed("dim", (d) => !!f && !set.has(d.id))
           .classed("focus", (d) => !!f && f.kind === "node" && d.id === f.id);
+        // Subtle glow on the focused node only — CSS filters are costly in
+        // SVG, so exactly one node ever carries it.
+        nodeGroup
+          .selectAll("g.node")
+          .select("circle")
+          .style("filter", (d) =>
+            f && f.kind === "node" && d.id === f.id
+              ? `drop-shadow(0 0 6px ${nodeColor(d)}66)`
+              : null,
+          );
+        // Links switch between the two opacity bands; a focused neighborhood
+        // also gains +1px width (taper shapes are only rebuilt for links
+        // whose boost actually changed — this runs on every hover).
         linkGroup
           .selectAll("path.link")
-          .classed("dim", (d) => !!f && !linkInFocus(d, f))
-          .classed(
-            "focus",
-            (d) => !!f && f.kind === "edge" && linkInFocus(d, f),
-          );
+          .attr("opacity", (d) =>
+            !f
+              ? EDGE_OPACITY_BASE(d)
+              : linkInFocus(d, f)
+                ? EDGE_OPACITY_FOCUS(d)
+                : EDGE_OPACITY_DIM,
+          )
+          .each(function (d) {
+            const boost = f && linkInFocus(d, f) ? 1 : 0;
+            if (boost !== (d.__boost || 0)) {
+              d.__boost = boost;
+              const sel = d3.select(this);
+              if (d.__taper) sel.attr("d", linkTaper(d));
+              else sel.attr("stroke-width", d.__w + boost);
+            }
+          });
+        updateLabels2D(); // focused neighborhoods are always labeled
       }
 
       function applyFocus3D() {
@@ -1619,20 +1850,22 @@
           .style("display", (d) =>
             bundleVisibleMembers(d).length ? null : "none",
           )
-          .attr("stroke", (d) => EDGE_COLORS[bundleDominant(d)] || "#6e7691")
-          .attr("stroke-width", (d) => wScale2D(bundleWeight(d)))
-          .attr(
-            "stroke-dasharray",
-            (d) => EDGE_DASH[bundleDominant(d)] || null,
+          .each((d) => {
+            d.__dom = bundleDominant(d);
+            d.__w = wScale2D(bundleWeight(d));
+            // solid directional bundles taper; dashed (symmetric) types and
+            // self-loops stay stroked so their dash pattern survives
+            d.__taper =
+              !EDGE_DASH[d.__dom] && linkId(d.source) !== linkId(d.target);
+          })
+          .attr("fill", (d) => (d.__taper ? EDGE_COLORS[d.__dom] : "none"))
+          .attr("stroke", (d) => (d.__taper ? "none" : EDGE_COLORS[d.__dom]))
+          .attr("stroke-width", (d) =>
+            d.__taper ? null : d.__w + (d.__boost || 0),
           )
-          // confidence → opacity (range in the data is ~0.75–0.95)
-          .attr("stroke-opacity", (d) =>
-            Math.max(
-              0.45,
-              Math.min(0.9, 0.4 + (bundleConfidence(d) - 0.7) * 1.8),
-            ),
-          )
-          .attr("marker-end", (d) => `url(#arrow-${bundleDominant(d)})`);
+          .attr("stroke-dasharray", (d) => EDGE_DASH[d.__dom] || null)
+          .attr("opacity", EDGE_OPACITY_BASE) // applyFocus2D re-promotes focused links
+          .attr("d", linkShape); // shape depends on __taper/__w set above
         hitGroup
           .selectAll("path.link-hit")
           .style("display", (d) =>
@@ -1665,7 +1898,7 @@
 
       function renderActive() {
         if (mode === "2d") render2D();
-        else render3D();
+        else render3D(); // "3d" and "flow" share the WebGL renderer
         updateStats();
       }
 
@@ -1674,17 +1907,26 @@
         mode = m;
         clearFocus();
         document.getElementById("btn-2d").classList.toggle("active", m === "2d");
+        document
+          .getElementById("btn-flow")
+          .classList.toggle("active", m === "flow");
         document.getElementById("btn-3d").classList.toggle("active", m === "3d");
         document.getElementById("svg-container").style.display =
           m === "2d" ? "block" : "none";
         document.getElementById("graph-3d").style.display =
-          m === "3d" ? "block" : "none";
+          m === "2d" ? "none" : "block";
         document.getElementById("hint-3d").style.display =
           m === "3d" ? "block" : "none";
         document.getElementById("hint-2d").style.display =
           m === "2d" ? "block" : "none";
-        if (m === "2d" && simulation) simulation.alphaTarget(0).restart();
-        if (m === "3d") create3dAttempts = 0; // give a manual switch fresh retries
+        document.getElementById("hint-flow").style.display =
+          m === "flow" ? "block" : "none";
+        if (m === "2d") {
+          if (simulation) simulation.alphaTarget(0).restart();
+        } else {
+          if (simulation) simulation.stop(); // don't tick a hidden svg
+          create3dAttempts = 0; // give a manual switch fresh retries
+        }
         renderActive();
       }
 
@@ -1770,6 +2012,14 @@
               : 0;
         });
 
+        // Semantic-zoom label tiers by node size: ~18 majors always labeled,
+        // next ~40 earn theirs at k ≥ 1.4, the tail at k ≥ 2.2 (TIER_MIN_K).
+        [...simNodes]
+          .sort((a, b) => b.__r - a.__r || b.mention_count - a.mention_count)
+          .forEach((n, i) => {
+            n.__tier = i < 18 ? 1 : i < 58 ? 2 : 3;
+          });
+
         linkGroup.selectAll("*").remove();
         hitGroup.selectAll("*").remove();
         nodeGroup.selectAll("*").remove();
@@ -1805,38 +2055,6 @@
               .radius((d) => d.__r * 1.25 + 14)
               .strength(1),
           );
-
-        // Path with endpoints trimmed to the node circles so arrowheads land
-        // on the rim, plus a self-loop shape for A→A edges.
-        function linkPath(d) {
-          const s = d.source,
-            t = d.target;
-          if (s === t || s.id === t.id) {
-            const r = s.__r;
-            return `M ${s.x} ${s.y - r + 2}
-                    C ${s.x - r * 1.9} ${s.y - r * 2.8},
-                      ${s.x + r * 1.9} ${s.y - r * 2.8},
-                      ${s.x + 2} ${s.y - r}`;
-          }
-          const dx = t.x - s.x,
-            dy = t.y - s.y,
-            dist = Math.hypot(dx, dy) || 1;
-          const nx = -dy / dist,
-            ny = dx / dist;
-          const off = (d.__curv || 0) * dist;
-          const mx = (s.x + t.x) / 2 + nx * off;
-          const my = (s.y + t.y) / 2 + ny * off;
-          // trim toward the control point (≈ tangent direction at each end)
-          const trim = (px, py, cxp, cyp, r) => {
-            const vx = cxp - px,
-              vy = cyp - py,
-              vl = Math.hypot(vx, vy) || 1;
-            return [px + (vx / vl) * r, py + (vy / vl) * r];
-          };
-          const [sx, sy] = trim(s.x, s.y, mx, my, s.__r + 2);
-          const [tx, ty] = trim(t.x, t.y, mx, my, t.__r + 5);
-          return `M ${sx} ${sy} Q ${mx} ${my} ${tx} ${ty}`;
-        }
 
         const link = linkGroup
           .selectAll("path")
@@ -1939,18 +2157,27 @@
           .attr("r", (d) => d.__r)
           .attr("fill", (d) => nodeColor(d));
 
+        // Tier-1 majors carry their label inside the circle; everything else
+        // gets it beside the circle (never squeezed inside), fixed small size.
+        // The radius guard matters in isolate mode, where a tiny node set
+        // makes everything tier 1.
+        const labelInside = (d) => d.__tier === 1 && d.__r >= 22;
         node
           .append("text")
+          .attr("text-anchor", (d) => (labelInside(d) ? "middle" : "start"))
+          .attr("x", (d) => (labelInside(d) ? 0 : d.__r + 4))
           .attr("dy", "0.35em")
-          .style(
-            "font-size",
-            (d) => Math.max(10, Math.min(d.__r * 0.55, 20)) + "px",
+          .style("font-size", (d) =>
+            labelInside(d)
+              ? Math.max(10, Math.min(d.__r * 0.55, 20)) + "px"
+              : "10.5px",
           )
+          .style("font-weight", (d) => (labelInside(d) ? 700 : 600))
           .text((d) => d.label);
 
         const updatePositions = () => {
-          link.attr("d", linkPath);
-          hit.attr("d", linkPath);
+          link.attr("d", linkShape);
+          hit.attr("d", linkCenter);
           node.attr("transform", (d) => `translate(${d.x},${d.y})`);
         };
 
@@ -1975,7 +2202,14 @@
         simulation.alpha(0.06).restart();
 
         applyVisibility2D();
-        applyFocus2D();
+        labelSig = null; // fresh node set — force a label refresh
+        applyFocus2D(); // ends in updateLabels2D()
+
+        // gentle fade-in — the one load animation this view gets
+        g.attr("opacity", 0)
+          .transition("fade")
+          .duration(350)
+          .attr("opacity", 1);
       }
 
       // ---- 3D (3d-force-graph / WebGL) --------------------------------------------
@@ -2009,6 +2243,56 @@
           console.warn("label sprite failed", e);
           return null;
         }
+      }
+
+      // Floor slabs for the Flow view: a translucent tinted plane + grid per
+      // role level, with a label sprite at the edge. Uses the global THREE
+      // (r157, loaded for three-spritetext) to build plain Object3Ds that the
+      // bundled r168 renderer draws fine — same cross-instance pattern as the
+      // node label sprites. Cleared and rebuilt on every 3D render.
+      const FLOW_FLOOR_SIZE = 950;
+      function updateFlowFloors() {
+        if (!graph3d) return;
+        let scene;
+        try {
+          scene = graph3d.scene();
+        } catch (e) {
+          return;
+        }
+        flowFloorObjs.forEach((o) => scene.remove(o));
+        flowFloorObjs = [];
+        if (mode !== "flow" || typeof THREE === "undefined") return;
+        const roleColors = SCHEME_DEFS.role.colors;
+        const roleLabels = SCHEME_DEFS.role.labels;
+        Object.entries(FLOW3D_Y).forEach(([key, y]) => {
+          const color = roleColors[key];
+          const plane = new THREE.Mesh(
+            new THREE.PlaneGeometry(FLOW_FLOOR_SIZE, FLOW_FLOOR_SIZE),
+            new THREE.MeshBasicMaterial({
+              color,
+              transparent: true,
+              opacity: 0.06,
+              side: THREE.DoubleSide,
+              depthWrite: false, // don't occlude nodes/links behind the glass
+            }),
+          );
+          plane.rotation.x = -Math.PI / 2;
+          plane.position.y = y - 16; // just under the node centers
+          const grid = new THREE.GridHelper(FLOW_FLOOR_SIZE, 16, color, color);
+          grid.material.transparent = true;
+          grid.material.opacity = 0.09;
+          grid.material.depthWrite = false;
+          grid.position.y = y - 16;
+          const label = new SpriteText(roleLabels[key]);
+          label.color = color;
+          label.textHeight = 24;
+          label.fontWeight = "700";
+          label.position.set(-FLOW_FLOOR_SIZE / 2 - 110, y + 6, 0);
+          [plane, grid, label].forEach((o) => {
+            scene.add(o);
+            flowFloorObjs.push(o);
+          });
+        });
       }
 
       function show3dError(msg) {
@@ -2122,7 +2406,7 @@
           () => {
             contextLost3d = false;
             hide3dOverlay();
-            if (mode === "3d") rebuild3D();
+            if (mode !== "2d") rebuild3D();
           },
           false,
         );
@@ -2148,6 +2432,9 @@
         // fresh copies — 3d-force-graph mutates node/link objects; bundles are
         // rebuilt per render so mutation is fine, members stay plain
         const nodes = filtered_nodes.map((n) => ({ ...n }));
+        // Flow: pin each node's height to its role floor (fy survives the
+        // simulation ticks) — the force layout then spreads floors horizontally
+        if (mode === "flow") nodes.forEach((n) => (n.fy = flowFloorY(n)));
         const links = buildBundles(filtered_edges);
         wMax3d = Math.max(0.0001, ...links.map(bundleTotalWeight));
         nodes3dById = new Map(nodes.map((n) => [n.id, n]));
@@ -2183,7 +2470,8 @@
               .nodeThreeObjectExtend(true)
               .nodeThreeObject((n) => makeLabel(n, mcMax))
               .linkColor((l) => EDGE_COLORS[bundleDominant(l)] || "#6e7691")
-              .linkOpacity(0.55)
+              // quieter resting state, matching the 2D muted default
+              .linkOpacity(0.35)
               .linkWidth((l) => 0.5 + (bundleWeight(l) / wMax3d) * 3.4)
               .linkCurvature((l) => l.__curv || 0)
               .linkLabel((l) => edgeTooltip(l))
@@ -2239,7 +2527,9 @@
                 n.fz = n.z;
               })
               .onNodeRightClick((n) => {
-                n.fx = n.fy = n.fz = undefined;
+                n.fx = n.fz = undefined;
+                // in Flow the floor pin must survive an unpin
+                n.fy = mode === "flow" ? flowFloorY(n) : undefined;
                 graph3d.d3ReheatSimulation();
               })
               .onBackgroundClick(() => clearFocus());
@@ -2312,7 +2602,7 @@
                 "Starting the 3D renderer… (attempt " + create3dAttempts + " of 3)",
               );
               setTimeout(() => {
-                if (mode === "3d" && !graph3d) rebuild3D();
+                if (mode !== "2d" && !graph3d) rebuild3D();
               }, 700);
               return;
             }
@@ -2347,6 +2637,7 @@
           show3dError("3D render failed:<br>" + (e && e.message ? e.message : e));
           return;
         }
+        updateFlowFloors();
         applyVisibility3D();
         applyFocus3D();
 
@@ -2356,6 +2647,18 @@
         const c = document.getElementById("graph-3d");
         graph3d.width(c.clientWidth).height(c.clientHeight);
         userInteracted3D = false;
+        // Flow reads best from a slightly elevated side view: tilt the camera
+        // so the stacked floors are visible as planes, not edge-on stripes
+        // (the auto zoomToFit calls preserve this direction).
+        if (mode === "flow") {
+          try {
+            graph3d.cameraPosition(
+              { x: 0, y: 620, z: 1500 },
+              { x: 0, y: 0, z: 0 },
+              0,
+            );
+          } catch (e) {}
+        }
         [500, 1500, 3000, 5000].forEach((ms) =>
           setTimeout(() => {
             if (!userInteracted3D) {
@@ -2368,7 +2671,7 @@
       }
 
       window.addEventListener("resize", () => {
-        if (graph3d && mode === "3d") {
+        if (graph3d && mode !== "2d") {
           const c = document.getElementById("graph-3d");
           graph3d.width(c.clientWidth).height(c.clientHeight);
         }
